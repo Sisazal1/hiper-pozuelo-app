@@ -1,0 +1,1 @@
+import Link from 'next/link'; export default function NotFound(){return <main className="main wrap"><h1 className="h1">Ese pack no existe</h1><Link className="btn" href="/packs">Ver los 4 packs</Link></main>}

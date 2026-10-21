@@ -1,0 +1,3 @@
+import fs from 'node:fs'; import sharp from 'sharp';
+fs.mkdirSync('public/packs',{recursive:true});
+for(const slug of ['bano','cocina','habitacion','completo']){const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900"><rect width="1200" height="900" fill="#FFF8F3"/><circle cx="600" cy="430" r="230" fill="#FDF1F2"/><path d="M370 600h460M440 520h320" stroke="#E30613" stroke-width="18" stroke-linecap="round"/><text x="600" y="410" text-anchor="middle" font-family="Arial" font-size="64" font-weight="700" fill="#1A1A1A">${slug}</text></svg>`;await sharp(Buffer.from(svg)).webp().toFile(`public/packs/${slug}.webp`);await sharp(Buffer.from(svg)).resize(640,480).webp().toFile(`public/packs/${slug}-640.webp`)}

@@ -1,0 +1,236 @@
+[
+  {
+    "slug": "bano",
+    "name": "Pack baño",
+    "priceCents": 3290,
+    "units": 9,
+    "groups": [
+      {
+        "name": "Baño",
+        "units": 9,
+        "items": [
+          {
+            "item": "Toallas",
+            "qty": 2
+          },
+          {
+            "item": "Gel",
+            "qty": 1
+          },
+          {
+            "item": "Champú",
+            "qty": 1
+          },
+          {
+            "item": "Papel higiénico",
+            "qty": 5
+          }
+        ]
+      }
+    ],
+    "notIncluded": [],
+    "benefit": "El baño completo el primer día: toallas, gel, champú y papel.",
+    "availability": "in_stock",
+    "dataStatus": "ASSUMED-demo",
+    "image": {
+      "src": "/packs/bano.webp",
+      "width": 1200,
+      "height": 900,
+      "illustrative": true
+    },
+    "imageAlt": "Ilustración de toallas, gel y champú sobre fondo claro"
+  },
+  {
+    "slug": "cocina",
+    "name": "Pack cocina",
+    "priceCents": 5990,
+    "units": 22,
+    "groups": [
+      {
+        "name": "Cocina",
+        "units": 22,
+        "items": [
+          {
+            "item": "Sartén",
+            "qty": 1
+          },
+          {
+            "item": "Cazo",
+            "qty": 1
+          },
+          {
+            "item": "Cubiertos",
+            "qty": 6
+          },
+          {
+            "item": "Vajilla",
+            "qty": 6
+          },
+          {
+            "item": "Vasos",
+            "qty": 4
+          },
+          {
+            "item": "Utensilios",
+            "qty": 4
+          }
+        ]
+      }
+    ],
+    "notIncluded": [],
+    "benefit": "Sartén, cazo, cubiertos y vajilla: puedes cocinar la primera noche.",
+    "availability": "in_stock",
+    "dataStatus": "ASSUMED-demo",
+    "image": {
+      "src": "/packs/cocina.webp",
+      "width": 1200,
+      "height": 900,
+      "illustrative": true
+    },
+    "imageAlt": "Ilustración de sartén, cazo y vajilla sobre fondo claro"
+  },
+  {
+    "slug": "habitacion",
+    "name": "Pack habitación",
+    "priceCents": 7290,
+    "units": 16,
+    "groups": [
+      {
+        "name": "Habitación",
+        "units": 16,
+        "items": [
+          {
+            "item": "Sábanas",
+            "qty": 2
+          },
+          {
+            "item": "Almohada",
+            "qty": 2
+          },
+          {
+            "item": "Edredón",
+            "qty": 1
+          },
+          {
+            "item": "Perchas",
+            "qty": 11
+          }
+        ]
+      }
+    ],
+    "notIncluded": [],
+    "benefit": "Lo que necesita una cama vacía: sábanas, almohada, edredón y perchas.",
+    "availability": "in_stock",
+    "dataStatus": "ASSUMED-demo",
+    "image": {
+      "src": "/packs/habitacion.webp",
+      "width": 1200,
+      "height": 900,
+      "illustrative": true
+    },
+    "imageAlt": "Ilustración de sábanas y almohada sobre fondo claro"
+  },
+  {
+    "slug": "completo",
+    "name": "Pack completo",
+    "priceCents": 17990,
+    "units": 51,
+    "groups": [
+      {
+        "name": "Baño",
+        "units": 9,
+        "items": [
+          {
+            "item": "Toallas",
+            "qty": 2
+          },
+          {
+            "item": "Gel",
+            "qty": 1
+          },
+          {
+            "item": "Champú",
+            "qty": 1
+          },
+          {
+            "item": "Papel higiénico",
+            "qty": 5
+          }
+        ]
+      },
+      {
+        "name": "Cocina",
+        "units": 22,
+        "items": [
+          {
+            "item": "Sartén",
+            "qty": 1
+          },
+          {
+            "item": "Cazo",
+            "qty": 1
+          },
+          {
+            "item": "Cubiertos",
+            "qty": 6
+          },
+          {
+            "item": "Vajilla",
+            "qty": 6
+          },
+          {
+            "item": "Vasos",
+            "qty": 4
+          },
+          {
+            "item": "Utensilios",
+            "qty": 4
+          }
+        ]
+      },
+      {
+        "name": "Habitación",
+        "units": 16,
+        "items": [
+          {
+            "item": "Sábanas",
+            "qty": 2
+          },
+          {
+            "item": "Almohada",
+            "qty": 2
+          },
+          {
+            "item": "Edredón",
+            "qty": 1
+          },
+          {
+            "item": "Perchas",
+            "qty": 11
+          }
+        ]
+      },
+      {
+        "name": "Limpieza",
+        "units": 4,
+        "items": [
+          {
+            "item": "Limpiador",
+            "qty": 4
+          }
+        ]
+      }
+    ],
+    "notIncluded": [],
+    "benefit": "Todo lo de los tres packs y la limpieza, en una sola compra.",
+    "availability": "in_stock",
+    "dataStatus": "ASSUMED-demo",
+    "image": {
+      "src": "/packs/completo.webp",
+      "width": 1200,
+      "height": 900,
+      "illustrative": true
+    },
+    "imageAlt": "Ilustración de los artículos de los tres packs sobre fondo claro"
+  }
+]

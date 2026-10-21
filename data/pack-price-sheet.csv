@@ -1,0 +1,30 @@
+pack_id,item,qty,group,pack_price_eur
+bano,Toallas,2,Baño,32.90
+bano,Gel,1,Baño,32.90
+bano,Champú,1,Baño,32.90
+bano,Papel higiénico,5,Baño,32.90
+cocina,Sartén,1,Cocina,59.90
+cocina,Cazo,1,Cocina,59.90
+cocina,Cubiertos,6,Cocina,59.90
+cocina,Vajilla,6,Cocina,59.90
+cocina,Vasos,4,Cocina,59.90
+cocina,Utensilios,4,Cocina,59.90
+habitacion,Sábanas,2,Habitación,72.90
+habitacion,Almohada,2,Habitación,72.90
+habitacion,Edredón,1,Habitación,72.90
+habitacion,Perchas,11,Habitación,72.90
+completo,Toallas,2,Baño,179.90
+completo,Gel,1,Baño,179.90
+completo,Champú,1,Baño,179.90
+completo,Papel higiénico,5,Baño,179.90
+completo,Sartén,1,Cocina,179.90
+completo,Cazo,1,Cocina,179.90
+completo,Cubiertos,6,Cocina,179.90
+completo,Vajilla,6,Cocina,179.90
+completo,Vasos,4,Cocina,179.90
+completo,Utensilios,4,Cocina,179.90
+completo,Sábanas,2,Habitación,179.90
+completo,Almohada,2,Habitación,179.90
+completo,Edredón,1,Habitación,179.90
+completo,Perchas,11,Habitación,179.90
+completo,Limpiador,4,Limpieza,179.90
