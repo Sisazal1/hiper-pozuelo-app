@@ -1,6 +1,7 @@
-import fs from 'node:fs';
-const p=JSON.parse(fs.readFileSync('src/content/packs.generated.json')); if(p.length!==4||p.some(x=>!x.units||x.dataStatus!=='ASSUMED-demo'))throw new Error('Invalid generated content');
-for(const x of p) if(!fs.existsSync(`public${x.image.src}`))throw new Error(`Missing image ${x.slug}`);
-const files=['app','src']; const text=files.flatMap(d=>fs.existsSync(d)?fs.readdirSync(d,{recursive:true}).filter(x=>String(x).match(/\.(ts|tsx|css)$/)).map(x=>fs.readFileSync(`${d}/${x}`,'utf8')):[]).join('\n');
-for(const bad of ['Pago seguro','Entrega a domicilio','Devoluciones 30 días']) if(text.includes(bad))throw new Error(`Forbidden copy: ${bad}`);
-console.log(`verify: ${p.length} packs, computed units valid, images present, forbidden copy clear`);
+import fs from 'node:fs'; import crypto from 'node:crypto'; import path from 'node:path';
+const repo=process.cwd(), canonical=path.resolve(repo,'..','product-council/projects/hiper-pozuelo/docs/pack-price-sheet.csv'), local=path.resolve(repo,'data/pack-price-sheet.csv'); const digest=f=>crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
+if(!fs.existsSync(canonical)) throw new Error(`Missing canonical CSV; expected sha256 ${digest(local)}`); const localHash=digest(local), canonicalHash=digest(canonical); if(localHash!==canonicalHash) throw new Error(`CSV digest mismatch\nlocal: ${localHash}\ncanonical: ${canonicalHash}`);
+const p=JSON.parse(fs.readFileSync('src/content/packs.generated.json')); if(p.length!==4||p.some(x=>!x.units||x.dataStatus!=='ASSUMED-demo')) throw new Error('Invalid generated content'); for(const x of p) if(!fs.existsSync(`public${x.image.src}`)) throw new Error(`Missing image ${x.slug}`);
+const refs=p.map(x=>`${x.groups.reduce((n,g)=>n+g.items.length,0)}/${x.units}`).join(' · '); if(refs!=='9/9 · 14/22 · 7/16 · 35/52') throw new Error(`Unexpected refs/units ${refs}`);
+const text=['app','src'].flatMap(d=>fs.readdirSync(d,{recursive:true}).filter(x=>String(x).match(/\.(ts|tsx|css)$/)).map(x=>fs.readFileSync(`${d}/${x}`,'utf8'))).join('\n'); for(const bad of ['Pago seguro','Entrega a domicilio','Devoluciones 30 días']) if(text.includes(bad)) throw new Error(`Forbidden copy: ${bad}`);
+console.log(`sha256 local      ${localHash}`); console.log(`sha256 canonical  ${canonicalHash}`); console.log(`refs/units ${refs}`); console.log('verify: canonical CSV, generated content, images, and forbidden copy clear');

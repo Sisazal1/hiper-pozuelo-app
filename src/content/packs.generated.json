@@ -6,29 +6,56 @@
     "units": 9,
     "groups": [
       {
-        "name": "Baño",
+        "name": "aseo",
         "units": 9,
         "items": [
           {
-            "item": "Toallas",
-            "qty": 2
-          },
-          {
-            "item": "Gel",
+            "item": "Toalla de baño 70x140 cm",
             "qty": 1
           },
           {
-            "item": "Champú",
+            "item": "Toalla de manos 50x100 cm",
             "qty": 1
           },
           {
-            "item": "Papel higiénico",
-            "qty": 5
+            "item": "Alfombrilla de baño",
+            "qty": 1
+          },
+          {
+            "item": "Gel de ducha 750 ml",
+            "qty": 1
+          },
+          {
+            "item": "Champú 400 ml",
+            "qty": 1
+          },
+          {
+            "item": "Pasta de dientes 75 ml",
+            "qty": 1
+          },
+          {
+            "item": "Cepillo de dientes",
+            "qty": 1
+          },
+          {
+            "item": "Papel higiénico 8 rollos",
+            "qty": 1
+          },
+          {
+            "item": "Neceser / bolsa",
+            "qty": 1
           }
         ]
       }
     ],
-    "notIncluded": [],
+    "notIncluded": [
+      "Sartén 24 cm antiadherente (Pack cocina)",
+      "Cazo 16 cm con tapa (Pack cocina)",
+      "Cubiertos 16 piezas (Pack cocina)",
+      "Plato llano 23 cm (Pack cocina)",
+      "Plato hondo 20 cm (Pack cocina)",
+      "Vaso 330 ml (Pack cocina)"
+    ],
     "benefit": "El baño completo el primer día: toallas, gel, champú y papel.",
     "availability": "in_stock",
     "dataStatus": "ASSUMED-demo",
@@ -47,37 +74,94 @@
     "units": 22,
     "groups": [
       {
-        "name": "Cocina",
-        "units": 22,
+        "name": "menaje",
+        "units": 7,
         "items": [
           {
-            "item": "Sartén",
+            "item": "Sartén 24 cm antiadherente",
             "qty": 1
           },
           {
-            "item": "Cazo",
+            "item": "Cazo 16 cm con tapa",
             "qty": 1
           },
           {
-            "item": "Cubiertos",
-            "qty": 6
+            "item": "Cubiertos 16 piezas",
+            "qty": 1
           },
           {
-            "item": "Vajilla",
-            "qty": 6
+            "item": "Tabla de cortar",
+            "qty": 1
           },
           {
-            "item": "Vasos",
+            "item": "Cuchillo de cocina",
+            "qty": 1
+          },
+          {
+            "item": "Pelador",
+            "qty": 1
+          },
+          {
+            "item": "Colador",
+            "qty": 1
+          }
+        ]
+      },
+      {
+        "name": "vajilla",
+        "units": 10,
+        "items": [
+          {
+            "item": "Plato llano 23 cm",
+            "qty": 2
+          },
+          {
+            "item": "Plato hondo 20 cm",
+            "qty": 2
+          },
+          {
+            "item": "Vaso 330 ml",
             "qty": 4
           },
           {
-            "item": "Utensilios",
-            "qty": 4
+            "item": "Taza",
+            "qty": 2
+          }
+        ]
+      },
+      {
+        "name": "textil",
+        "units": 3,
+        "items": [
+          {
+            "item": "Trapo de cocina",
+            "qty": 3
+          }
+        ]
+      },
+      {
+        "name": "limpieza",
+        "units": 2,
+        "items": [
+          {
+            "item": "Estropajo",
+            "qty": 1
+          },
+          {
+            "item": "Lavavajillas 750 ml",
+            "qty": 1
           }
         ]
       }
     ],
-    "notIncluded": [],
+    "notIncluded": [
+      "Toalla de baño 70x140 cm (Pack baño)",
+      "Toalla de manos 50x100 cm (Pack baño)",
+      "Alfombrilla de baño (Pack baño)",
+      "Gel de ducha 750 ml (Pack baño)",
+      "Champú 400 ml (Pack baño)",
+      "Pasta de dientes 75 ml (Pack baño)"
+    ],
     "benefit": "Sartén, cazo, cubiertos y vajilla: puedes cocinar la primera noche.",
     "availability": "in_stock",
     "dataStatus": "ASSUMED-demo",
@@ -96,29 +180,48 @@
     "units": 16,
     "groups": [
       {
-        "name": "Habitación",
+        "name": "dormitorio",
         "units": 16,
         "items": [
           {
-            "item": "Sábanas",
-            "qty": 2
-          },
-          {
-            "item": "Almohada",
-            "qty": 2
-          },
-          {
-            "item": "Edredón",
+            "item": "Sábanas 90x190 cm (3 piezas)",
             "qty": 1
           },
           {
-            "item": "Perchas",
-            "qty": 11
+            "item": "Almohada 70 cm fibra",
+            "qty": 1
+          },
+          {
+            "item": "Funda de almohada extra",
+            "qty": 1
+          },
+          {
+            "item": "Edredón individual",
+            "qty": 1
+          },
+          {
+            "item": "Percha",
+            "qty": 10
+          },
+          {
+            "item": "Cesto organizador",
+            "qty": 1
+          },
+          {
+            "item": "Regleta 4 tomas",
+            "qty": 1
           }
         ]
       }
     ],
-    "notIncluded": [],
+    "notIncluded": [
+      "Toalla de baño 70x140 cm (Pack baño)",
+      "Toalla de manos 50x100 cm (Pack baño)",
+      "Alfombrilla de baño (Pack baño)",
+      "Gel de ducha 750 ml (Pack baño)",
+      "Champú 400 ml (Pack baño)",
+      "Pasta de dientes 75 ml (Pack baño)"
+    ],
     "benefit": "Lo que necesita una cama vacía: sábanas, almohada, edredón y perchas.",
     "availability": "in_stock",
     "dataStatus": "ASSUMED-demo",
@@ -134,89 +237,181 @@
     "slug": "completo",
     "name": "Pack completo",
     "priceCents": 17990,
-    "units": 51,
+    "units": 52,
     "groups": [
       {
-        "name": "Baño",
+        "name": "aseo",
         "units": 9,
         "items": [
           {
-            "item": "Toallas",
+            "item": "Toalla de baño 70x140 cm",
+            "qty": 1
+          },
+          {
+            "item": "Toalla de manos 50x100 cm",
+            "qty": 1
+          },
+          {
+            "item": "Alfombrilla de baño",
+            "qty": 1
+          },
+          {
+            "item": "Gel de ducha 750 ml",
+            "qty": 1
+          },
+          {
+            "item": "Champú 400 ml",
+            "qty": 1
+          },
+          {
+            "item": "Pasta de dientes 75 ml",
+            "qty": 1
+          },
+          {
+            "item": "Cepillo de dientes",
+            "qty": 1
+          },
+          {
+            "item": "Papel higiénico 8 rollos",
+            "qty": 1
+          },
+          {
+            "item": "Neceser / bolsa",
+            "qty": 1
+          }
+        ]
+      },
+      {
+        "name": "menaje",
+        "units": 7,
+        "items": [
+          {
+            "item": "Sartén 24 cm antiadherente",
+            "qty": 1
+          },
+          {
+            "item": "Cazo 16 cm con tapa",
+            "qty": 1
+          },
+          {
+            "item": "Cubiertos 16 piezas",
+            "qty": 1
+          },
+          {
+            "item": "Tabla de cortar",
+            "qty": 1
+          },
+          {
+            "item": "Cuchillo de cocina",
+            "qty": 1
+          },
+          {
+            "item": "Pelador",
+            "qty": 1
+          },
+          {
+            "item": "Colador",
+            "qty": 1
+          }
+        ]
+      },
+      {
+        "name": "vajilla",
+        "units": 10,
+        "items": [
+          {
+            "item": "Plato llano 23 cm",
             "qty": 2
           },
           {
-            "item": "Gel",
-            "qty": 1
+            "item": "Plato hondo 20 cm",
+            "qty": 2
           },
           {
-            "item": "Champú",
-            "qty": 1
+            "item": "Vaso 330 ml",
+            "qty": 4
           },
           {
-            "item": "Papel higiénico",
-            "qty": 5
+            "item": "Taza",
+            "qty": 2
           }
         ]
       },
       {
-        "name": "Cocina",
-        "units": 22,
+        "name": "textil",
+        "units": 3,
         "items": [
           {
-            "item": "Sartén",
-            "qty": 1
-          },
-          {
-            "item": "Cazo",
-            "qty": 1
-          },
-          {
-            "item": "Cubiertos",
-            "qty": 6
-          },
-          {
-            "item": "Vajilla",
-            "qty": 6
-          },
-          {
-            "item": "Vasos",
-            "qty": 4
-          },
-          {
-            "item": "Utensilios",
-            "qty": 4
+            "item": "Trapo de cocina",
+            "qty": 3
           }
         ]
       },
       {
-        "name": "Habitación",
+        "name": "limpieza",
+        "units": 7,
+        "items": [
+          {
+            "item": "Estropajo",
+            "qty": 1
+          },
+          {
+            "item": "Lavavajillas 750 ml",
+            "qty": 1
+          },
+          {
+            "item": "Fregona + cubo",
+            "qty": 1
+          },
+          {
+            "item": "Detergente ropa 30 lavados",
+            "qty": 1
+          },
+          {
+            "item": "Limpiador multiusos 750 ml",
+            "qty": 1
+          },
+          {
+            "item": "Bayetas (paquete)",
+            "qty": 1
+          },
+          {
+            "item": "Guantes de limpieza",
+            "qty": 1
+          }
+        ]
+      },
+      {
+        "name": "dormitorio",
         "units": 16,
         "items": [
           {
-            "item": "Sábanas",
-            "qty": 2
-          },
-          {
-            "item": "Almohada",
-            "qty": 2
-          },
-          {
-            "item": "Edredón",
+            "item": "Sábanas 90x190 cm (3 piezas)",
             "qty": 1
           },
           {
-            "item": "Perchas",
-            "qty": 11
-          }
-        ]
-      },
-      {
-        "name": "Limpieza",
-        "units": 4,
-        "items": [
+            "item": "Almohada 70 cm fibra",
+            "qty": 1
+          },
           {
-            "item": "Limpiador",
-            "qty": 4
+            "item": "Funda de almohada extra",
+            "qty": 1
+          },
+          {
+            "item": "Edredón individual",
+            "qty": 1
+          },
+          {
+            "item": "Percha",
+            "qty": 10
+          },
+          {
+            "item": "Cesto organizador",
+            "qty": 1
+          },
+          {
+            "item": "Regleta 4 tomas",
+            "qty": 1
           }
         ]
       }
