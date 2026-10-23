@@ -88,13 +88,35 @@ async function session(label, cdpPort) {
     await call('Page.navigate', {url: `http://127.0.0.1:${appPort}${url}`});
     await poll('document.readyState==="complete"');
     await poll(`!!document.querySelector(${JSON.stringify(readySelector)})`);
-    await wait(350); // hydration + mount beacons
+    await wait(400); // hydration + mount beacons
+  };
+  // A click before hydration is a silent no-op: click, then require the effect, retrying.
+  const retry = async (action, effect, timeout = 15000) => {
+    const end = Date.now() + timeout;
+    while (Date.now() < end) {
+      try { await evaluate(action); } catch {}
+      const slice = Date.now() + 2500;
+      while (Date.now() < slice) {
+        try { if (await evaluate(effect)) return; } catch {}
+        await wait(120);
+      }
+    }
+    throw Error(`${label}: ${action} never produced ${effect}`);
+  };
+  const clickWhen = (selector, effect, timeout) => retry(`document.querySelector(${JSON.stringify(selector)}).click(),true`, effect, timeout);
+  const typeWhen = async (index, value) => {
+    const expression = `(()=>{const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;const i=document.querySelectorAll('.cardbody input')[${index}];if(!i)return null;set.call(i,${JSON.stringify(value)});i.dispatchEvent(new Event('input',{bubbles:true}));return i.value})()`;
+    for (let i = 0; i < 8; i++) {
+      if (await evaluate(expression) === value) { await wait(120); return; }
+      await wait(300);
+    }
+    throw Error(`${label}: could not type into checkout input ${index}`);
   };
   const click = async selector => {
     await poll(`!!document.querySelector(${JSON.stringify(selector)})`);
     await evaluate(`document.querySelector(${JSON.stringify(selector)}).click(),true`);
   };
-  return {proc, ws, call, evaluate, poll, go, click, close: () => { try { ws.close(); } catch {} kill(proc); }};
+  return {proc, ws, call, evaluate, poll, go, click, clickWhen, retry, typeWhen, close: () => { try { ws.close(); } catch {} kill(proc); }};
 }
 
 const failures = [];
@@ -124,22 +146,20 @@ try {
   first = await session('profile-a', cdpOne);
 
   await first.go(appPort, '/packs/bano', '.detail .btn');
-  await first.click('.detail .btn');                                    // add_to_cart bano
-  await first.poll('location.pathname==="/carrito"');
+  await first.clickWhen('.detail .btn', 'location.pathname==="/carrito"');   // add_to_cart bano
 
   await first.go(appPort, '/packs/cocina', '.detail .btn');
-  await first.click('.detail .btn');                                    // add_to_cart cocina
-  await first.poll('location.pathname==="/carrito"');
+  await first.clickWhen('.detail .btn', 'location.pathname==="/carrito"');   // add_to_cart cocina
 
-  await first.go(appPort, '/packs/habitacion', '.detail .btn');         // pack_view habitacion
+  await first.go(appPort, '/packs/habitacion', '.detail .btn');              // pack_view habitacion
 
   await first.go(appPort, '/packs/bano', '.detail .btn');
-  await first.click('.detail .btn');                                    // add_to_cart bano again (qty 2)
-  await first.poll('location.pathname==="/carrito"');
+  await first.clickWhen('.detail .btn', 'location.pathname==="/carrito"');   // add_to_cart bano again (qty 2)
 
   await first.go(appPort, '/carrito', '.row button');
-  await first.evaluate(`[...document.querySelectorAll('.row button')].find(b=>b.textContent.trim()==='Quitar').click(),true`); // cart_removed
-  await wait(400);
+  eq(await first.evaluate(`document.querySelectorAll('.row button').length`), 6, 'cart rows before removal');
+  await first.retry(`[...document.querySelectorAll('.row button')].find(b=>b.textContent.trim()==='Quitar').click(),true`, `document.querySelectorAll('.row button').length===3`); // cart_removed
+  await wait(300);
   const cartTotal = await first.evaluate(`document.querySelector('.price')?.textContent?.trim() ?? ''`);
   check(/\d/.test(cartTotal), `cart total readable after removal (got ${JSON.stringify(cartTotal)})`);
 
@@ -147,22 +167,18 @@ try {
   const sidA = await first.evaluate(`sessionStorage.getItem('hiper-session-id')`);
   check(typeof sidA === 'string' && /^[0-9a-f-]{36}$/.test(sidA), `session A id is a UUID (got ${sidA})`);
 
-  await first.evaluate(`(()=>{const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;const ins=[...document.querySelectorAll('.cardbody input')];set.call(ins[0],'Jorge H.');ins[0].dispatchEvent(new Event('input',{bubbles:true}));set.call(ins[1],'600000000');ins[1].dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
-  await wait(200);
-  await first.click('.cardbody .btn');                                  // checkout_start + slot_selected + step 2
-  await first.poll(`document.querySelector('.cardbody')?.textContent.includes('Pago simulado')`);
+  await first.typeWhen(0, 'Jorge H.');
+  await first.typeWhen(1, '600000000');
+  await first.clickWhen('.cardbody .btn', `document.querySelector('.cardbody')?.textContent.includes('Pago simulado')`); // checkout_start + slot_selected + step 2
 
-  await first.click('.cardbody .btn.secondary');                        // payment_failed (client)
-  await wait(400);
-  await first.click('.cardbody .btn:not(.secondary)');                  // payment_succeeded + step 3
-  await first.poll(`document.querySelector('.cardbody')?.textContent.includes('Revisión')`);
+  await first.click('.cardbody .btn.secondary');                             // payment_failed (client)
+  await wait(500);
+  await first.clickWhen('.cardbody .btn:not(.secondary)', `document.querySelector('.cardbody')?.textContent.includes('Revisión')`); // payment_succeeded + step 3
 
-  await first.click('.cardbody .btn');                                  // step 4
-  await first.poll(`document.querySelector('a.btn')?.getAttribute('href')?.startsWith('/pedido/')`);
+  await first.clickWhen('.cardbody .btn', `document.querySelector('a.btn')?.getAttribute('href')?.startsWith('/pedido/')`); // step 4
 
   const token = await first.evaluate(`document.querySelector('a.btn').getAttribute('href').split('/').pop()`);
-  await first.click('a.btn');
-  await first.poll(`location.pathname.startsWith('/pedido/')`);
+  await first.clickWhen('a.btn', 'location.pathname.startsWith("/pedido/")');
   const pickup = await first.poll(`document.querySelector('.pickup-code')?.textContent?.trim() || null`);
   check(/^[0-9A-HJKMNP-TV-Z]{6}$/.test(pickup), `pickup code on printed pass (got ${pickup})`);
 
