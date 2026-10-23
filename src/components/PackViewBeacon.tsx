@@ -1,0 +1,1 @@
+'use client'; import {useEffect} from 'react'; import {sendEvent} from '@/src/lib/session'; export function PackViewBeacon({slug}:{slug:string}){useEffect(()=>{void sendEvent('pack_view',{slug})},[slug]);return null}
