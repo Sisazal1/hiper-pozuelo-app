@@ -1,0 +1,2 @@
+'use client'; import {useRouter} from 'next/navigation';
+export function AddToCartButton({slug,price}:{slug:string;price:string}){const router=useRouter(); return <button className="btn" onClick={()=>{const current=JSON.parse(localStorage.getItem('cart')||'{}'); current[slug]=(current[slug]||0)+1; localStorage.setItem('cart',JSON.stringify(current)); router.push('/carrito')}}>Comprar · {price}</button>}

@@ -1,0 +1,1 @@
+export function ContentsGroup({name,units,items}:{name:string;units:number;items:{item:string;qty:number}[]}){return <details open><summary>{name} · {units} artículos</summary>{items.map(i=><div className="row" key={i.item}><span>{i.item}</span><span>×{i.qty}</span></div>)}</details>}
