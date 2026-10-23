@@ -2,7 +2,7 @@
   "name": "hiper-pozuelo-app",
   "version": "1.0.0",
   "private": true,
-  "scripts": {"dev":"next dev","build":"npm run content:build && next build","start":"next start","content:build":"node scripts/build-content.mjs","assets:packs":"node scripts/make-pack-art.mjs","test":"node --test tests/*.test.mjs","verify":"npm run content:build && node scripts/verify.mjs && node --test tests/*.test.mjs && next build"},
+  "scripts": {"dev":"next dev","build":"npm run content:build && next build","start":"next start","content:build":"node scripts/build-content.mjs","assets:packs":"node scripts/make-pack-art.mjs","test":"node --test tests/*.test.mjs","verify":"npm run content:build && node scripts/verify.mjs && node --test tests/*.test.mjs && next build && node scripts/flow.mjs"},
   "dependencies": {"@vitejs/plugin-react":"latest","next":"latest","react":"latest","react-dom":"latest","sharp":"latest"},
   "devDependencies": {"typescript":"latest","@types/node":"latest","@types/react":"latest","@types/react-dom":"latest","tailwindcss":"latest","@tailwindcss/postcss":"latest"}
 }

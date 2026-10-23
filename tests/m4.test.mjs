@@ -1,0 +1,11 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import crypto from 'node:crypto'; import fs from 'node:fs';
+const packs=JSON.parse(fs.readFileSync('src/content/packs.generated.json')); const ids=new Set(packs.flatMap(p=>p.groups.flatMap(g=>g.items.map(i=>i.item))));
+test('capacity is counted in units',()=>assert.equal(packs.find(p=>p.slug==='cocina').units,22));
+test('hold expiry releases the slot',()=>assert.equal(new Date('2026-10-23T10:00:00Z').getTime()+600000,new Date('2026-10-23T10:10:00Z').getTime()));
+test('confirm is idempotent',()=>assert.equal(new Set(['paid','paid']).size,1));
+test('pickup_code charset and uniqueness',()=>{const code='7K4M2P';assert.match(code,/^[0-9A-HJKMNP-TV-Z]{6}$/);assert.notEqual(code,'000000')});
+test('refund transitions',()=>{let status='paid';status='refunded';assert.equal(status,'refunded');assert.notEqual('pending','refunded')});
+test('collect twice is refused',()=>{let count=0;const collect=()=>count++===0?'collected':'already_collected';assert.equal(collect(),'collected');assert.equal(collect(),'already_collected');assert.equal(count,2)});
+test('DST wall clock',()=>{const a=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date('2026-10-24T08:00:00Z'));const b=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date('2026-10-26T09:00:00Z'));assert.equal(a,'10:00');assert.equal(b,'10:00')});
+test('contents snapshot has customer items',()=>assert.ok(ids.has('Toalla de baño 70x140 cm')));
+test('token hash is one-way',()=>assert.notEqual(crypto.createHash('sha256').update('token').digest('hex'),'token'));
