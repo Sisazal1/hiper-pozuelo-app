@@ -1,0 +1,3 @@
+'use client'; import {useEffect} from 'react'; import {sendEvent} from '@/src/lib/session';
+function source(){const params=new URLSearchParams(location.search);const raw=params.get('utm_source')||'';const ref=document.referrer;let value=raw;if(!value&&ref){try{const host=new URL(ref).hostname;value=host==='localhost'||host.endsWith('hiperpozuelo.local')?host:''}catch{value=''}}return (value||'direct').toLowerCase().replace(/[^a-z0-9._-]/g,'-').slice(0,32)||'direct'}
+export function SessionSource(){useEffect(()=>{if(sessionStorage.getItem('hiper-session-source'))return;sessionStorage.setItem('hiper-session-source','1');void sendEvent('session_source',{source:source()})},[]);return null}
