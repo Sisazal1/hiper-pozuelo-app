@@ -1,2 +1,243 @@
-import {spawn} from 'node:child_process'; import fs from 'node:fs'; import path from 'node:path';
-const edge='C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',debug=3419,port=3420,db=path.resolve('data/proof.db'),log=path.resolve('data/events.log'),scratch=path.resolve('data/edge-proof');for(const f of [db,`${db}-wal`,`${db}-shm`,log])if(fs.existsSync(f))fs.rmSync(f);fs.mkdirSync(scratch,{recursive:true});const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-p',String(port)],{env:{...process.env,DATABASE_PATH:db,EVENT_LOG_PATH:log},stdio:'ignore'});const browser=spawn(edge,['--headless=new',`--remote-debugging-port=${debug}`,`--user-data-dir=${scratch}`,'--no-first-run','about:blank'],{stdio:'ignore'});const wait=ms=>new Promise(r=>setTimeout(r,ms));async function json(url){for(let i=0;i<40;i++){try{return await (await fetch(url)).json()}catch{await wait(250)}}throw Error('CDP target unavailable')};try{await wait(2000);const tab=(await json(`http://localhost:${debug}/json`))[0];const ws=new WebSocket(tab.webSocketDebuggerUrl);let id=0;const call=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;const fn=e=>{const m=JSON.parse(e.data);if(m.id===n){ws.removeEventListener('message',fn);m.error?reject(Error(m.error.message)):resolve(m.result)}};ws.addEventListener('message',fn);ws.send(JSON.stringify({id:n,method,params}))});const evalPage=async expression=>(await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true})).result?.value;const go=async url=>{await call('Page.navigate',{url:`http://localhost:${port}${url}`});await wait(500);};await go('/packs/bano');await go('/packs/cocina');await go('/packs/habitacion');const session=await evalPage('sessionStorage.getItem("hiper-session-id")');await evalPage('localStorage.setItem("cart",JSON.stringify({bano:1,cocina:1}))');await go('/carrito');await go('/checkout');const order=await evalPage(`fetch('/api/checkout',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({lines:[{slug:'bano',qty:1},{slug:'cocina',qty:1}],name:'Jorge H.',phone:'600000000',slotId:'slot-1',session_id:sessionStorage.getItem('hiper-session-id')})}).then(r=>r.json())`);await evalPage(`fetch('/api/pay',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderRef:'not-yet',session_id:sessionStorage.getItem('hiper-session-id')})})`);const paid=await evalPage(`fetch('/api/pay',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orderRef:${JSON.stringify(order.orderRef)},session_id:sessionStorage.getItem('hiper-session-id')})}).then(r=>r.json())`);const collected=await evalPage(`fetch('/api/mostrador',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pickup_code:${JSON.stringify(paid.pickup_code)},session_id:sessionStorage.getItem('hiper-session-id')})}).then(r=>r.json())`);if(collected.status!=='collected')throw Error('collect failed');ws.close();const second=spawn(edge,['--headless=new',`--remote-debugging-port=${debug+1}`,`--user-data-dir=${scratch}-2`,'--no-first-run','about:blank'],{stdio:'ignore'});await wait(1500);const target=(await json(`http://localhost:${debug+1}/json`))[0];const ws2=new WebSocket(target.webSocketDebuggerUrl);await new Promise(r=>ws2.addEventListener('open',r,{once:true}));let id2=0;const ev=(method,params={})=>new Promise(resolve=>{const n=++id2;const fn=e=>{const m=JSON.parse(e.data);if(m.id===n){ws2.removeEventListener('message',fn);resolve(m.result)}};ws2.addEventListener('message',fn);ws2.send(JSON.stringify({id:n,method,params}))});await ev('Page.navigate',{url:`http://localhost:${port}/packs/bano`});await wait(500);const session2=(await ev('Runtime.evaluate',{expression:'sessionStorage.getItem("hiper-session-id")',returnByValue:true})).result.value;ws2.close();second.kill();const lines=fs.readFileSync(log,'utf8').trim().split(/\r?\n/).filter(Boolean).map(JSON.parse),names=new Set(lines.map(x=>x.name));if(!names.has('session_source')||session===session2||lines.some(x=>!x.payload.session_id)||/ip|user_agent|email|phone/.test(fs.readFileSync(log,'utf8')))throw Error('event assertions failed');console.log('events: 10/10 names · pack_view=3 same-session · add_to_cart source=pack_page · cart_removed=1 · steps=1,2,3,4 · payment_failed=1 · collected=1 · session_source=1 · session_id null=0 · pii=0')}finally{server.kill();browser.kill()}
+// R-080 / R-081b / R-099b - event proof driven through the real app over CDP.
+// One browser per profile, each profile on its own free CDP port (never the app port),
+// and assertions on the exact ten-name set as emitted by the app, not written by this script.
+import {spawn} from 'node:child_process';
+import net from 'node:net';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const DB = path.resolve('data/proof.db');
+const LOG = path.resolve('data/events.log');
+const SCRATCH = path.resolve('data/edge-proof');
+const TEN = ['pack_view','add_to_cart','cart_removed','checkout_start','checkout_step_viewed','slot_selected','payment_succeeded','payment_failed','order_collected','session_source'];
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const {port} = server.address();
+      server.close(() => resolve(port));
+    });
+  });
+}
+
+function kill(proc) {
+  if (!proc || proc.exitCode !== null) return;
+  try { spawn('taskkill', ['/PID', String(proc.pid), '/T', '/F'], {stdio: 'ignore'}); } catch {}
+}
+
+async function waitForTarget(port) {
+  let last = 'no response';
+  for (let i = 0; i < 80; i++) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/json/list`);
+      const text = await res.text();
+      try {
+        const page = JSON.parse(text).find(t => t.type === 'page');
+        if (page?.webSocketDebuggerUrl) return page;
+        last = 'no page target';
+      } catch { last = `non-JSON (HTTP ${res.status})`; }
+    } catch (error) { last = error.message; }
+    await wait(250);
+  }
+  throw Error(`CDP target unavailable on ${port}: ${last}`);
+}
+
+async function session(label, cdpPort) {
+  const userDir = path.join(SCRATCH, label);
+  fs.rmSync(userDir, {recursive: true, force: true});
+  fs.mkdirSync(userDir, {recursive: true});
+  const proc = spawn(EDGE, ['--headless=new', `--remote-debugging-port=${cdpPort}`, `--user-data-dir=${userDir}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', 'about:blank'], {stdio: 'ignore'});
+  const target = await waitForTarget(cdpPort);
+  const ws = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((resolve, reject) => {
+    ws.addEventListener('open', resolve, {once: true});
+    ws.addEventListener('error', () => reject(Error(`websocket refused on ${cdpPort}`)), {once: true});
+  });
+  let seq = 0;
+  const call = (method, params = {}) => new Promise((resolve, reject) => {
+    const id = ++seq;
+    const onMessage = e => {
+      const m = JSON.parse(e.data);
+      if (m.id !== id) return;
+      ws.removeEventListener('message', onMessage);
+      m.error ? reject(Error(`${method}: ${m.error.message}`)) : resolve(m.result);
+    };
+    ws.addEventListener('message', onMessage);
+    ws.send(JSON.stringify({id, method, params}));
+  });
+  const evaluate = async expression => {
+    const r = await call('Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});
+    if (r.exceptionDetails) throw Error(`page error: ${r.exceptionDetails.exception?.description ?? r.exceptionDetails.text}`);
+    return r.result?.value;
+  };
+  const poll = async (expression, timeout = 10000) => {
+    const end = Date.now() + timeout;
+    while (Date.now() < end) {
+      try { const v = await evaluate(expression); if (v) return v; } catch {}
+      await wait(120);
+    }
+    throw Error(`${label}: timeout waiting for ${expression}`);
+  };
+  const go = async (appPort, url, readySelector) => {
+    await call('Page.navigate', {url: `http://127.0.0.1:${appPort}${url}`});
+    await poll('document.readyState==="complete"');
+    await poll(`!!document.querySelector(${JSON.stringify(readySelector)})`);
+    await wait(350); // hydration + mount beacons
+  };
+  const click = async selector => {
+    await poll(`!!document.querySelector(${JSON.stringify(selector)})`);
+    await evaluate(`document.querySelector(${JSON.stringify(selector)}).click(),true`);
+  };
+  return {proc, ws, call, evaluate, poll, go, click, close: () => { try { ws.close(); } catch {} kill(proc); }};
+}
+
+const failures = [];
+const check = (ok, message) => { if (!ok) failures.push(message); };
+const eq = (actual, expected, message) => check(JSON.stringify(actual) === JSON.stringify(expected), `${message}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+const once = (rows, name, message) => eq(rows.filter(r => r.name === name).length, 1, message);
+
+let server;
+let first;
+let second;
+try {
+  const appPort = await freePort();
+  const cdpOne = await freePort();
+  const cdpTwo = await freePort();
+  if (new Set([appPort, cdpOne, cdpTwo]).size !== 3) throw Error('port allocation collided');
+
+  for (const f of [DB, `${DB}-wal`, `${DB}-shm`, LOG]) if (fs.existsSync(f)) fs.rmSync(f);
+
+  server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', String(appPort)], {env: {...process.env, DATABASE_PATH: DB, EVENT_LOG_PATH: LOG}, stdio: 'ignore'});
+  for (let i = 0; ; i++) {
+    try { if ((await fetch(`http://127.0.0.1:${appPort}/packs/bano`)).ok) break; } catch {}
+    if (i > 60) throw Error('app server did not start');
+    await wait(250);
+  }
+
+  // ---- session A: the whole money path, driven by clicking real UI ----
+  first = await session('profile-a', cdpOne);
+
+  await first.go(appPort, '/packs/bano', '.detail .btn');
+  await first.click('.detail .btn');                                    // add_to_cart bano
+  await first.poll('location.pathname==="/carrito"');
+
+  await first.go(appPort, '/packs/cocina', '.detail .btn');
+  await first.click('.detail .btn');                                    // add_to_cart cocina
+  await first.poll('location.pathname==="/carrito"');
+
+  await first.go(appPort, '/packs/habitacion', '.detail .btn');         // pack_view habitacion
+
+  await first.go(appPort, '/packs/bano', '.detail .btn');
+  await first.click('.detail .btn');                                    // add_to_cart bano again (qty 2)
+  await first.poll('location.pathname==="/carrito"');
+
+  await first.go(appPort, '/carrito', '.row button');
+  await first.evaluate(`[...document.querySelectorAll('.row button')].find(b=>b.textContent.trim()==='Quitar').click(),true`); // cart_removed
+  await wait(400);
+  const cartTotal = await first.evaluate(`document.querySelector('.price')?.textContent?.trim() ?? ''`);
+  check(/\d/.test(cartTotal), `cart total readable after removal (got ${JSON.stringify(cartTotal)})`);
+
+  await first.go(appPort, '/checkout', '.cardbody input');
+  const sidA = await first.evaluate(`sessionStorage.getItem('hiper-session-id')`);
+  check(typeof sidA === 'string' && /^[0-9a-f-]{36}$/.test(sidA), `session A id is a UUID (got ${sidA})`);
+
+  await first.evaluate(`(()=>{const set=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;const ins=[...document.querySelectorAll('.cardbody input')];set.call(ins[0],'Jorge H.');ins[0].dispatchEvent(new Event('input',{bubbles:true}));set.call(ins[1],'600000000');ins[1].dispatchEvent(new Event('input',{bubbles:true}));return true})()`);
+  await wait(200);
+  await first.click('.cardbody .btn');                                  // checkout_start + slot_selected + step 2
+  await first.poll(`document.querySelector('.cardbody')?.textContent.includes('Pago simulado')`);
+
+  await first.click('.cardbody .btn.secondary');                        // payment_failed (client)
+  await wait(400);
+  await first.click('.cardbody .btn:not(.secondary)');                  // payment_succeeded + step 3
+  await first.poll(`document.querySelector('.cardbody')?.textContent.includes('Revisión')`);
+
+  await first.click('.cardbody .btn');                                  // step 4
+  await first.poll(`document.querySelector('a.btn')?.getAttribute('href')?.startsWith('/pedido/')`);
+
+  const token = await first.evaluate(`document.querySelector('a.btn').getAttribute('href').split('/').pop()`);
+  await first.click('a.btn');
+  await first.poll(`location.pathname.startsWith('/pedido/')`);
+  const pickup = await first.poll(`document.querySelector('.pickup-code')?.textContent?.trim() || null`);
+  check(/^[0-9A-HJKMNP-TV-Z]{6}$/.test(pickup), `pickup code on printed pass (got ${pickup})`);
+
+  // B14: an unknown token must 404 without an order row.
+  const miss = await first.evaluate(`fetch('/pedido/lo-que-sea').then(r=>r.status)`);
+  eq(miss, 404, 'GET /pedido/lo-que-sea');
+
+  // collect over the counter, then refuse the second collection
+  const collect1 = await first.evaluate(`fetch('/api/mostrador',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pickup_code:${JSON.stringify(pickup)},session_id:sessionStorage.getItem('hiper-session-id')})}).then(r=>r.json())`);
+  eq(collect1.status, 'collected', 'first collection');
+  const collect2 = await first.evaluate(`fetch('/api/mostrador',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pickup_code:${JSON.stringify(pickup)},session_id:sessionStorage.getItem('hiper-session-id')})}).then(r=>r.json())`);
+  eq(collect2.status, 'already_collected', 'second collection refused');
+
+  // session_source is once per session: the second post must be refused by the server
+  const dedupe = await first.evaluate(`fetch('/api/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'session_source',payload:{source:'direct',session_id:sessionStorage.getItem('hiper-session-id')}})}).then(r=>r.status)`);
+  eq(dedupe, 409, 'duplicate session_source');
+
+  // the pass must still resolve with the same token (no restart needed)
+  const passStatus = await first.evaluate(`fetch('/pedido/${token}').then(r=>r.status)`);
+  eq(passStatus, 200, 'pass resolves by token');
+
+  // ---- session B: a fresh profile must produce a different id and its own source ----
+  second = await session('profile-b', cdpTwo);
+  await second.go(appPort, '/packs/bano?utm_source=instagram', '.detail .btn');
+  const sidB = await second.evaluate(`sessionStorage.getItem('hiper-session-id')`);
+  check(typeof sidB === 'string' && sidB.length > 0, 'session B id present');
+  await wait(400);
+} finally {
+  first?.close();
+  second?.close();
+  kill(server);
+}
+
+const rows = fs.readFileSync(LOG, 'utf8').split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
+const sidOf = rows.map(r => r.payload?.session_id);
+const sessions = [...new Set(sidOf)];
+const a = sessions[0] ?? null;
+const rowsA = rows.filter(r => r.payload?.session_id === a);
+const rowsB = rows.filter(r => r.payload?.session_id !== a);
+const namesAll = [...new Set(rows.map(r => r.name))].sort();
+const namesA = [...new Set(rowsA.map(r => r.name))].sort();
+
+eq(namesAll, [...TEN].sort(), 'event name set');
+eq(namesA, [...TEN].sort(), 'session A covers all ten names');
+eq(sessions.length, 2, 'distinct sessions');
+check(sidOf.every(s => typeof s === 'string' && s.trim() !== ''), 'no null session_id');
+check(sessions.length === 2 && sessions[0] !== sessions[1], 'second profile reused the first session id');
+
+const A = name => rowsA.filter(r => r.name === name);
+eq([...new Set(A('pack_view').map(r => r.payload.slug))].sort(), ['bano','cocina','habitacion'], 'pack_view slugs');
+eq(A('pack_view').map(r => r.payload.slug), ['bano','cocina','habitacion','bano'], 'pack_view order');
+eq(A('add_to_cart').map(r => r.payload.slug), ['bano','cocina','bano'], 'add_to_cart slugs');
+check(A('add_to_cart').every(r => r.payload.source === 'pack_page'), 'add_to_cart source');
+eq(A('add_to_cart').map(r => r.payload.qty), [1,1,1], 'add_to_cart qty');
+eq(A('cart_removed').map(r => r.payload.slug), ['bano'], 'cart_removed slug');
+once(rowsA, 'checkout_start', 'checkout_start');
+once(rowsA, 'slot_selected', 'slot_selected');
+once(rowsA, 'payment_succeeded', 'payment_succeeded');
+once(rowsA, 'payment_failed', 'payment_failed');
+once(rowsA, 'order_collected', 'order_collected');
+once(rowsA, 'session_source', 'session_source once per session');
+eq(A('checkout_step_viewed').map(r => r.payload.step).sort(), [1,2,3,4], 'checkout steps');
+check(A('payment_failed').every(r => typeof r.payload.order_ref === 'string'), 'payment_failed order_ref');
+check(A('slot_selected').every(r => typeof r.payload.slot_id === 'string'), 'slot_selected slot_id');
+eq(rowsB.map(r => r.name).sort(), ['pack_view','session_source'], 'session B names');
+eq(rowsB.filter(r => r.name === 'pack_view').map(r => r.payload.slug), ['bano'], 'session B pack_view');
+eq(rowsB.find(r => r.name === 'session_source')?.payload.source, 'instagram', 'session B source from utm_source');
+
+const logText = fs.readFileSync(LOG, 'utf8');
+check(!logText.includes('Jorge'), 'customer name absent from events');
+check(!logText.includes('600000000'), 'customer phone absent from events');
+check(rows.every(r => !Object.keys(r.payload ?? {}).some(k => /email|phone|user_agent|(^|_)ip$|card|address/i.test(k))), 'no PII keys');
+check(logText.trim().split(/\r?\n/).length === rows.length, 'log is one JSON object per line');
+
+if (failures.length) throw Error(`event assertions failed (${failures.length}):\n- ${failures.join('\n- ')}`);
+
+const count = name => rowsA.filter(r => r.name === name).length;
+console.log(`events: ${namesA.length}/10 names · pack_view=${count('pack_view')} (3 slugs, bano twice) · add_to_cart=3 (source=pack_page) · cart_removed=${count('cart_removed')} · checkout_start=${count('checkout_start')} · steps=1,2,3,4 · slot_selected=${count('slot_selected')} · payment_failed=${count('payment_failed')} · payment_succeeded=${count('payment_succeeded')} · order_collected=${count('order_collected')} · session_source=1 · session_id null=0 · stable-across-${rowsA.length} · new-session-differs · source=instagram · dedupe=409 · 404=ok · pii=0`);
