@@ -158,7 +158,7 @@ try {
 
   await first.go(appPort, '/carrito', '.row button');
   eq(await first.evaluate(`document.querySelectorAll('.row button').length`), 6, 'cart rows before removal');
-  await first.retry(`[...document.querySelectorAll('.row button')].find(b=>b.textContent.trim()==='Quitar').click(),true`, `document.querySelectorAll('.row button').length===3`); // cart_removed
+  await first.retry(`[...document.querySelectorAll('.row button')].find(b=>/^Quitar /.test(b.getAttribute('aria-label')||'')).click(),true`, `document.querySelectorAll('.row button').length===3`); // cart_removed
   await wait(300);
   const cartTotal = await first.evaluate(`document.querySelector('.price')?.textContent?.trim() ?? ''`);
   check(/\d/.test(cartTotal), `cart total readable after removal (got ${JSON.stringify(cartTotal)})`);

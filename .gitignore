@@ -6,3 +6,9 @@ data/*.db
 data/*.db-*
 data/*.log
 data/edge-proof
+
+data/edge-visual
+data/visual.db
+data/visual.db-wal
+data/visual.db-shm
+data/visual-events.log
