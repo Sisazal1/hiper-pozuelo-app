@@ -6,6 +6,10 @@ import {CHECKOUT_COPY, PAY_CTA_A, REVIEW_CTA_A} from '@/src/content/checkout';
 import {total, type CartLine} from '@/src/lib/cart';
 import {sendEvent, sessionId} from '@/src/lib/session';
 import Alert from '@/src/components/Alert';
+import {StepHeader} from '@/src/components/StepHeader';
+import {SlotDayChip} from '@/src/components/SlotDayChip';
+import {SlotWindowCard} from '@/src/components/SlotWindowCard';
+import {StickyCheckoutBar} from '@/src/components/StickyCheckoutBar';
 
 // B-1 (D-063): the step used to live only in React state, so F5 at step 2 read the cart back but
 // not the order it had already created — and the server answered `existing:true` with no token.
@@ -173,11 +177,12 @@ export default function CheckoutPage() {
     void sendEvent('payment_failed', {order_ref: orderRef});
   }
 
-  return <main className="main wrap">
+  return <main className="checkout-page main wrap">
     <h1 className="h1">{CHECKOUT_COPY.pageTitle}</h1>
+    <StepHeader current={step}/>
     {/* Server refusals that are not a written state (capacity, datos, carrito vacío) keep the status
         line: it is announced, it is not an alert with an action because there is nothing to press. */}
-    <p className="formmsg" role="status" aria-live="polite">{message}</p>
+    <p className="formmsg" role={message ? 'alert' : 'status'} aria-live="polite">{message}</p>
 
     {step === 1 && <section className="cardbody">
       {alert === 'duplicate' && <Alert
@@ -200,10 +205,10 @@ export default function CheckoutPage() {
       <label className="field" htmlFor="f-phone"><span>Teléfono</span>
         <input id="f-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" required value={phone} onChange={e => setPhone(e.target.value)} />
       </label>
-      <label className="field" htmlFor="f-slot"><span>Elige día y hora</span>
+      <div className="slot-picker"><span className="field-label">Elige día y hora</span><div className="slot-days"><SlotDayChip label="sábado" selected/></div><SlotWindowCard label="10:00"/><label className="field" htmlFor="f-slot">
         <select id="f-slot" name="slot" defaultValue="sábado 10:00"><option>sábado 10:00</option></select>
-      </label>
-      <button className="btn" onClick={create} disabled={busy || lines.length === 0}>
+      </label></div>
+      <button id="checkout-action" className="btn" onClick={create} disabled={busy || lines.length === 0}>
         {/* m-6 (D-063): an empty cart has nothing to pay, so it does not advertise an amount.
             The cart total is the honest source on this step only — it becomes the order's on step 2. */}
         {lines.length === 0 ? 'Continuar al pago' : `Continuar al pago · ${eur(cartTotal)}`}
@@ -221,8 +226,10 @@ export default function CheckoutPage() {
         body={CHECKOUT_COPY.paymentFailed}
         action={{label: CHECKOUT_COPY.retry, onClick: () => void pay()}}
       />}
+      <section className="withdrawal-block"><h3>Tu derecho a devolverlo</h3><p>14 días desde la recogida.</p></section>
       <button className="btn" onClick={pay}>{`${PAY_CTA_A} · ${eur(orderTotal)}`}</button>
       <button className="btn secondary" onClick={fail}>Simular pago fallido</button>
+      <StickyCheckoutBar amount={orderTotal}/>
     </section>}
 
     {step === 3 && <section className="cardbody">

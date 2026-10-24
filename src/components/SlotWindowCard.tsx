@@ -1,0 +1,1 @@
+export function SlotWindowCard({label, remaining}: {label: string; remaining?: number}) {return <div className="slot-window-card"><strong>{label}</strong>{remaining !== undefined && remaining <= 2 ? <span>Quedan {remaining} huecos</span> : null}</div>}
