@@ -5,6 +5,8 @@ import {SiteHeader} from '@/src/components/SiteHeader';
 import {SiteFooter} from '@/src/components/SiteFooter';
 import {SiteDisclosureBand} from '@/src/components/SiteDisclosureBand';
 import {SITE_URL} from '@/src/content/site';
+import {headers} from 'next/headers';
+import {type Lang} from '@/src/content/lang';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -13,15 +15,16 @@ export const metadata: Metadata = {
   description: `${FRAME_LEAD} Packs de demostración para tu nueva vida en Madrid.`,
 };
 
-export default function Layout({children}: {children: React.ReactNode}) {
+export default async function Layout({children}: {children: React.ReactNode}) {
+  const lang = ((await headers()).get('x-site-lang') === 'en' ? 'en' : 'es') as Lang;
   return (
-    <html lang="es">
+    <html lang={lang} dir="ltr">
       <body>
-        <SiteDisclosureBand/>
+        <SiteDisclosureBand lang={lang}/>
         <SessionSource/>
-        <SiteHeader/>
+        <SiteHeader lang={lang}/>
         {children}
-        <SiteFooter/>
+        <SiteFooter lang={lang}/>
       </body>
     </html>
   );

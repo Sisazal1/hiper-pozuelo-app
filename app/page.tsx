@@ -7,6 +7,7 @@ import {PackPlate} from '@/src/components/PackPlate';
 import {JsonLd} from '@/src/components/JsonLd';
 import {SITE_URL} from '@/src/content/site';
 import type {Metadata} from 'next';
+import {copyFor, type Lang} from '@/src/content/lang';
 
 export const metadata: Metadata = {title: 'Packs para estudiantes', description: 'Cuatro packs para tu primer día de piso.', alternates: {canonical: '/'}};
 
@@ -45,16 +46,22 @@ function excludedPacks(pack: typeof packs[number]) {
   return names.length ? names.join(', ') : '—';
 }
 
-export default function Home() {
+export default function Home({searchParams}: {searchParams?: Promise<{lang?: string}>}) {
+  return searchParams ? <HomeWithLang searchParams={searchParams}/> : <HomeWithLang/>;
+}
+async function HomeWithLang({searchParams}: {searchParams?: Promise<{lang?: string}>}) {
+  const lang = (await searchParams)?.lang === 'en' ? 'en' : 'es';
+  const c = copyFor(lang as Lang);
+  const steps = c.steps.map((step, i) => ({n: i + 1, ...step}));
   return <><JsonLd data={{'@context': 'https://schema.org', '@type': 'Organization', name: 'Hiper Pozuelo', url: SITE_URL, areaServed: 'Pozuelo de Alarcón'}}/><main className="site-home">
     <section data-block="2" className="home-block hook wrap">
       <div className="hook-copy">
-        <p className="eyebrow">Packs para estudiantes</p>
-        <h1>Cuatro packs para tu primer día de piso.</h1>
-        <p className="home-lead">Mira qué entra, cuánto cuesta y cuándo lo recoges.</p>
+        <p className="eyebrow">{c.packs}</p>
+        <h1>{c.homeTitle}</h1>
+        <p className="home-lead">{c.homeLead}</p>
         <div className="cta-row">
-          <Link className="btn" href="/packs">Ver los 4 packs</Link>
-          <a className="btn secondary" href="#como-funciona">Cómo funciona</a>
+          <Link className="btn" href="/packs">{c.viewPacks}</Link>
+          <a className="btn secondary" href="#como-funciona">{c.how}</a>
         </div>
       </div>
       <ul className="hook-index" aria-label="Los cuatro packs y su precio">
@@ -69,14 +76,12 @@ export default function Home() {
       </ul>
     </section>
 
-    <section data-block="3" className="trust-row wrap" aria-label="Confianza">
-      <p>Recogida en tienda · Gratis</p>
-      <p>Pago simulado, sin cargo</p>
-      <p>Precio de demostración · IVA incluido</p>
+    <section data-block="3" className="trust-row wrap" aria-label={c.packs}>
+      <p>{c.pickup}</p><p>{c.simulated}</p><p>{c.demoPrice}</p>
     </section>
 
     <section data-block="4" className="home-block wrap" aria-labelledby="packs-heading">
-      <h2 id="packs-heading">Packs para estudiantes</h2>
+      <h2 id="packs-heading">{c.packs}</h2>
       <div className="pack-grid">
         {packs.map(p => (
           <article className="pack-card" key={p.slug}>
@@ -84,9 +89,9 @@ export default function Home() {
             <div className="pack-card-body">
               <h3>{p.name}</h3>
               <p className="price">{eur(p.priceCents)}</p>
-              <span className="availability" data-availability={p.availability}>{availabilityLabel(p.availability)}</span>
+              <span className="availability" data-availability={p.availability}>{c.availability[p.availability as keyof typeof c.availability]}</span>
               <p className="micro">{PRICE_LABEL[p.dataStatus]}</p>
-              <Link className="btn secondary pack-cta" href={`/packs/${p.slug}`}>Ver pack</Link>
+              <Link className="btn secondary pack-cta" href={`/packs/${p.slug}`}>{c.viewPack}</Link>
             </div>
           </article>
         ))}
@@ -94,7 +99,7 @@ export default function Home() {
     </section>
 
     <section data-block="5" className="home-block wrap" aria-labelledby="contents-heading">
-      <h2 id="contents-heading">Qué entra</h2>
+      <h2 id="contents-heading">{c.contents}</h2>
       <div className="contents-grid">
         {packs.map(pack => (
           <article className="data-panel" key={pack.slug}>
@@ -106,17 +111,15 @@ export default function Home() {
     </section>
 
     <section data-block="6" className="home-block wrap" aria-labelledby="coverage-heading">
-      <h2 id="coverage-heading">Qué cubre cada pack</h2>
+      <h2 id="coverage-heading">{c.coverage}</h2>
       <div className="compare-scroll">
         <table className="compare">
           <caption className="sr-only">Comparación de los cuatro packs por artículos, grupos, precio y packs que no incluye</caption>
           <thead>
             <tr>
-              <th scope="col">Pack</th>
-              <th scope="col">Artículos</th>
-              <th scope="col">Grupos</th>
+              <th scope="col">{c.pack}</th><th scope="col">{c.items}</th><th scope="col">{c.groups}</th>
               <th scope="col">Precio</th>
-              <th scope="col">No incluye</th>
+              <th scope="col">{c.notIncluded}</th>
             </tr>
           </thead>
           <tbody>
@@ -137,7 +140,7 @@ export default function Home() {
     <section data-block="7" id="como-funciona" className="home-block wrap" aria-labelledby="how-heading">
       <h2 id="how-heading">Cómo funciona</h2>
       <ol className="steps">
-        {STEPS.map(step => (
+        {steps.map(step => (
           <li key={step.n}>
             <strong>{step.n}</strong>
             <h3>{step.title}</h3>
@@ -148,16 +151,14 @@ export default function Home() {
     </section>
 
     <section data-block="8" className="home-block wrap" aria-labelledby="pickup-heading">
-      <h2 id="pickup-heading">Dónde lo recoges</h2>
+      <h2 id="pickup-heading">{c.where}</h2>
       <div className="data-panel pickup-panel">
-        <p><strong>Recogida en tienda. Sin envíos.</strong></p>
-        <p>Eliges día y hora al pagar.</p>
-        <p>Con el código de 6 caracteres del pase.</p>
+        <p><strong>{c.noShipping}</strong></p><p>{c.chooseTime}</p><p>{c.code}</p>
       </div>
     </section>
 
     <section data-block="9" className="home-block wrap" aria-labelledby="questions-heading">
-      <h2 id="questions-heading">Dudas antes de comprar</h2>
+      <h2 id="questions-heading">{c.questions}</h2>
       <div className="faq-list">
         {QUESTIONS.map(item => (
           <details key={item.q}>
@@ -169,8 +170,7 @@ export default function Home() {
     </section>
 
     <section data-block="10" className="home-block closure wrap">
-      <p>Elige tu pack: verás todo lo que entra antes de pagar.</p>
-      <Link className="btn" href="/packs">Ver los 4 packs</Link>
+      <p>{c.close}</p><Link className="btn" href="/packs">{c.viewPacks}</Link>
     </section>
   </main></>;
 }
