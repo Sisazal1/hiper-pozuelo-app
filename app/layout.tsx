@@ -26,7 +26,7 @@ export default async function Layout({children}: {children: React.ReactNode}) {
         <SiteDisclosureBand lang={lang}/>
         <SessionSource/>
         <SiteHeader lang={lang}/>
-        {children}
+        <div id="contenido">{children}</div>
         <SiteFooter lang={lang}/>
       </body>
     </html>

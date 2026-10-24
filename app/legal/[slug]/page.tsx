@@ -2,6 +2,7 @@ import {notFound} from 'next/navigation';
 import {CHECKOUT_COPY} from '@/src/content/checkout';
 import {ANALYTICS_MEASUREMENT} from '@/src/content/disclosure';
 import {SITE_URL} from '@/src/content/site';
+import {Breadcrumbs} from '@/src/components/Breadcrumbs';
 
 // m-3 (D-063): the heading was the slug, so the page titled itself `aviso-legal` in lowercase.
 const HEADINGS: Record<string, string> = {
@@ -22,6 +23,7 @@ export default async function Legal({params}: {params: Promise<{slug: string}>})
   const {slug} = await params;
   if (!slugs.includes(slug)) notFound();
   return <main className="main wrap">
+    <Breadcrumbs trail={[{label: 'Inicio', href: '/'}, {label: 'Legal', href: '/legal'}, {label: HEADINGS[slug]}]}/>
     <h1 className="h1">{HEADINGS[slug]}</h1>
     {slug === 'privacidad' && <section>
       <h2 className="h2">{CHECKOUT_COPY.measurementHeading}</h2>

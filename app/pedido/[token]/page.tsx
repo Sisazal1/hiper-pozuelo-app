@@ -2,6 +2,7 @@ import {notFound} from 'next/navigation';
 import {findByToken} from '@/src/server/orders';
 import {CHECKOUT_COPY} from '@/src/content/checkout';
 import {STORE_ADDRESS, PICKUP_ADDRESS_PENDING} from '@/src/content/store';
+import {Breadcrumbs} from '@/src/components/Breadcrumbs';
 export const dynamic = 'force-dynamic';
 export const metadata = {title: 'Tu pase', description: 'Pase de recogida de Hiper Pozuelo.', robots: {index: false, follow: false}};
 
@@ -13,6 +14,7 @@ export default async function Pass({params}: {params: Promise<{token: string}>})
   if (!row) notFound();
   const snapshot = JSON.parse(row.contents_snapshot);
   return <main className="main wrap pass">
+    <Breadcrumbs trail={[{label: 'Inicio', href: '/'}, {label: 'Pase de recogida'}]}/>
     {row.status === 'refunded' && <p>Pedido anulado · pago simulado, no se ha cobrado nada</p>}
     {row.status === 'expired' && <p>{CHECKOUT_COPY.expiredLabel} · elige otra hora para continuar.</p>}
     {row.status === 'collected' && <p>Ya recogido el {new Date(row.collected_at).toLocaleDateString('es-ES')}.</p>}

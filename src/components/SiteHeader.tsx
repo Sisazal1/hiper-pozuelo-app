@@ -1,19 +1,18 @@
+'use client';
 import Link from 'next/link';
+import {useEffect, useRef, useState} from 'react';
+import {usePathname} from 'next/navigation';
 import {packs} from '@/src/content/packs';
 import {HeaderSearch} from '@/src/components/HeaderSearch';
 import {CartBadge} from '@/src/components/CartBadge';
 import {LanguageLinks} from '@/src/components/LanguageLinks';
-
+const links = [{href: '/como-funciona', label: 'Cómo funciona'}, {href: '/recogida', label: 'Recogida'}, {href: '/faq', label: 'Preguntas'}];
+function active(path: string, href: string) { return path.startsWith(href); }
+function price(cents: number) { return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(cents / 100); }
+function PackCards({close}: {close: () => void}) { return <div className="packs-panel-grid">{packs.map(p => <Link className="packs-panel-card" href={`/packs/${p.slug}`} key={p.slug} onClick={close}><strong>{p.name}</strong><span>{p.units} artículos · {price(p.priceCents)}</span><small>{p.groups[0]?.items.slice(0, 3).map(i => i.item).join(' · ')}</small><em>Disponible</em></Link>)}</div>; }
 export function SiteHeader({lang = 'es'}: {lang?: 'es' | 'en'}) {
-  return (
-    <header data-block="1" className="site-header">
-      <div className="wrap site-header-inner">
-        <Link className="brand" href="/">Hiper Pozuelo</Link>
-        <nav className="pack-nav" aria-label="Packs">
-          {packs.map(pack => <Link key={pack.slug} href={`/packs/${pack.slug}`}>{pack.name}</Link>)}
-        </nav>
-        <div className="header-actions"><HeaderSearch lang={lang}/><Link className="cart-link" href="/carrito">{lang === 'en' ? 'Cart' : 'Carrito'} <CartBadge/></Link><LanguageLinks lang={lang}/></div>
-      </div>
-    </header>
-  );
+  const pathname = usePathname(); const [packsOpen, setPacksOpen] = useState(false); const [compact, setCompact] = useState(false); const menuButton = useRef<HTMLButtonElement>(null); const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { const onScroll = () => setCompact(window.scrollY > 12); window.addEventListener('scroll', onScroll, {passive: true}); return () => window.removeEventListener('scroll', onScroll); }, []); useEffect(() => {setPacksOpen(false); if (dialog.current?.open) dialog.current.close();}, [pathname]);
+  function toggleDrawer() { if (dialog.current?.open) {dialog.current.close(); menuButton.current?.focus();} else {dialog.current?.showModal(); setTimeout(() => dialog.current?.querySelector<HTMLElement>('input,button,a')?.focus(), 0);} }
+  return <header data-block="1" className={compact ? 'site-header is-compact' : 'site-header'}><a className="skip-link" href="#contenido">Saltar al contenido</a><div className="wrap site-header-inner"><button ref={menuButton} className="menu-button" type="button" aria-label="Abrir menú" onClick={toggleDrawer}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg></button><Link className="brand" href="/">Hiper Pozuelo</Link><nav className="desktop-nav" aria-label="Navegación principal"><div className="packs-nav-item"><button type="button" aria-expanded={packsOpen} aria-controls="packs-panel" onClick={() => setPacksOpen(v => !v)}>Packs <span aria-hidden="true">⌄</span></button>{packsOpen && <div id="packs-panel" className="packs-panel"><PackCards close={() => setPacksOpen(false)}/><aside><strong>Ayuda</strong><Link href="/como-funciona" onClick={() => setPacksOpen(false)}>Cómo funciona</Link><Link href="/faq" onClick={() => setPacksOpen(false)}>Preguntas</Link><Link href="/legal/devoluciones" onClick={() => setPacksOpen(false)}>Devoluciones</Link><Link className="panel-compare" href="/packs" onClick={() => setPacksOpen(false)}>Comparar los 4 packs</Link></aside></div>}</div>{links.map(l => <Link key={l.href} className={active(pathname,l.href)?'is-active':''} aria-current={active(pathname,l.href)?'page':undefined} href={l.href}>{l.label}</Link>)}</nav><div className="header-actions"><HeaderSearch lang={lang} packs={packs}/><Link className="cart-link" href="/carrito" aria-label="Carrito"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h2l2 11h10l2-8H7M10 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2m7 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg><span className="cart-word">Carrito</span><CartBadge/></Link><LanguageLinks lang={lang}/></div></div><dialog ref={dialog} className="mobile-dialog" onCancel={() => menuButton.current?.focus()}><div className="mobile-dialog-inner"><div className="mobile-dialog-top"><strong>Menú</strong><button type="button" onClick={toggleDrawer} aria-label="Cerrar menú">×</button></div><HeaderSearch lang={lang} packs={packs}/><details><summary>Packs</summary>{packs.map(p => <Link key={p.slug} href={`/packs/${p.slug}`} onClick={toggleDrawer}>{p.name}<span>{price(p.priceCents)}</span></Link>)}</details>{links.map(l => <Link key={l.href} href={l.href} onClick={toggleDrawer}>{l.label}</Link>)}<div className="mobile-legal"><Link href="/legal">Legal</Link><Link href="/legal/privacidad">Privacidad</Link></div></div></dialog></header>;
 }
