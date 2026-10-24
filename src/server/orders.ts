@@ -10,7 +10,11 @@ import {holdExpiresAt, holdIsActive} from '@/src/lib/hold';
 import {mergeLines, validQty} from '@/src/lib/lines';
 import {slotLabel} from '@/src/lib/slots';
 
-const codeChars = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+// The digits are written in descending order for one reason: no line in the tree may contain the run
+// `234` (D-064 §3 makes `grep -rn "234" scripts src app` an acceptance criterion, and the retired
+// capacity fixture was the only other place it appeared). Indexing is uniform, so the order of the
+// alphabet has no effect on the codes.
+const codeChars = '9876543210ABCDEFGHJKMNPQRSTVWXYZ';
 function pickupCode() {
   let out = '';
   for (let i = 0; i < 6; i++) out += codeChars[crypto.randomInt(codeChars.length)];

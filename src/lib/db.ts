@@ -16,9 +16,11 @@ CREATE TABLE IF NOT EXISTS staff_actions (id INTEGER PRIMARY KEY, order_id INTEG
 `;
 
 // The demo window, in UTC. Rendered through Europe/Madrid at format time (src/lib/slots.ts), so it
-// reads 10:00–14:00 on a Saturday in either offset. capacity_minutes is ASSUMED: one packer, 4 h
-// (business-strategy.md §20.3). capacity_units stays NULL = not enforced until Q5 has a number.
-const DEMO_SLOT = {id: 'slot-1', startsAt: '2026-10-24T08:00:00.000Z', endsAt: '2026-10-24T12:00:00.000Z', capacityMinutes: 240};
+// reads 10:00–14:00 on a Saturday in either offset. capacity_minutes is ASSUMED: 190 assembly
+// minutes for one packer (D-063 §6, business-strategy.md §20.3 — the 4 h figure was 2,29× the
+// 105-minute default and made an 18-order launch day 104,2 % of the window it is sold against).
+// capacity_units stays NULL = not enforced until Q5 has a number.
+const DEMO_SLOT = {id: 'slot-1', startsAt: '2026-10-24T08:00:00.000Z', endsAt: '2026-10-24T12:00:00.000Z', capacityMinutes: 190};
 
 function columns(conn: DatabaseSync, table: string) {
   return conn.prepare(`PRAGMA table_info(${table})`).all() as {name: string; type: string}[];
@@ -57,8 +59,13 @@ function migrate(conn: DatabaseSync) {
   // refused and deleting the file was the only way back.
   conn.prepare('INSERT OR IGNORE INTO slots (id,starts_at,ends_at,capacity_units,capacity_minutes) VALUES (?,?,?,?,?)')
     .run(DEMO_SLOT.id, DEMO_SLOT.startsAt, DEMO_SLOT.endsAt, null, DEMO_SLOT.capacityMinutes);
-  conn.prepare('UPDATE slots SET capacity_minutes=? WHERE id=? AND capacity_minutes IS NULL')
-    .run(DEMO_SLOT.capacityMinutes, DEMO_SLOT.id);
+  // The capacity of slot-1 is a SEED, not business data: Profile A has no operator surface (D-005)
+  // and the number is ASSUMED, so it is refreshed on every open when it differs. `IS NOT ?` is the
+  // null-safe form — a database written at 240 by an earlier commit reads 190 as well, instead of
+  // shipping two builds that disagree on the same digest. The day Simon edits a window's capacity
+  // it becomes a table, not a constant.
+  conn.prepare('UPDATE slots SET capacity_minutes=? WHERE id=? AND capacity_minutes IS NOT ?')
+    .run(DEMO_SLOT.capacityMinutes, DEMO_SLOT.id, DEMO_SLOT.capacityMinutes);
 }
 
 export function database() {

@@ -25,7 +25,7 @@ test('ASSEMBLY_MINUTES matches data/pack-price-sheet.csv row by row', () => {
 
 test('required minutes are assembly minutes times quantity', () => {
   assert.equal(requiredMinutes([{slug: 'bano', qty: 1}]), 8);
-  assert.equal(requiredMinutes([{slug: 'completo', qty: 13}]), 234);
+  assert.equal(requiredMinutes([{slug: 'completo', qty: 5}]), 90);
   assert.equal(requiredMinutes([{slug: 'bano', qty: 2}, {slug: 'cocina', qty: 1}]), 26);
   assert.throws(() => requiredMinutes([{slug: 'no-existe', qty: 1}]), /Sin minutos de montaje/);
 });
@@ -45,12 +45,19 @@ test('a three-unit window refuses five, accepts three and refuses one more (R-04
   assert.equal(oneMore.reason, 'units');
 });
 
-test('the pilot window: 240 minutes takes completo x13 and then refuses one more', () => {
-  const window = {minutes: 240, units: null};
+// R-041 (r11) / R-042b: the seeded window is 190 minutes, and the ceiling is reached exactly rather
+// than approached. The minutes are derived from the sheet, so this test moves with the CSV and not
+// with a number typed twice.
+test('the pilot window: 190 minutes takes the at-the-cap cart and refuses 198', () => {
+  const atTheCap = [{slug: 'completo', qty: 5}, {slug: 'habitacion', qty: 5}, {slug: 'cocina', qty: 5}];
+  assert.equal(requiredMinutes(atTheCap), 190);
+  const withBano = [...atTheCap, {slug: 'bano', qty: 1}];
+  assert.equal(requiredMinutes(withBano), 198);
+  const window = {minutes: 190, units: null};
   const empty = {minutes: 0, units: 0};
-  const big = fits(window, empty, {minutes: 234, units: 130});
-  assert.equal(big.ok, true);
-  const after = fits(window, {minutes: 234, units: 130}, {minutes: 18, units: 52});
+  const cap = fits(window, empty, {minutes: requiredMinutes(atTheCap), units: 0});
+  assert.equal(cap.ok, true);
+  const after = fits(window, {minutes: requiredMinutes(atTheCap), units: 0}, {minutes: 8, units: 1});
   assert.equal(after.ok, false);
   assert.equal(after.reason, 'minutes');
   assert.equal(after.message, 'Esta franja no tiene capacidad para ese pedido. Elige otra hora.');
