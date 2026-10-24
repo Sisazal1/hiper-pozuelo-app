@@ -221,3 +221,20 @@ h3{font-size:18px}
 .home-pack-card{transition:box-shadow 160ms cubic-bezier(.2,0,.3,1),transform 160ms cubic-bezier(.2,0,.3,1)}.cart-badge{transition:transform 160ms cubic-bezier(.2,0,.3,1)}.cart-badge:active{transform:scale(1.15)}
 @media(prefers-reduced-motion:no-preference){.home-pack-card:hover{transform:translateY(-4px);box-shadow:0 18px 32px #1A1A1A1A}.btn:active{transform:scale(.98)}.cart-badge{animation:badge-in 220ms ease-out}}
 @keyframes badge-in{from{transform:scale(.9)}to{transform:scale(1)}}
+/* La narrativa del pack tenía un sticky de 1249px en un viewport de 900: no se fijaba y dejaba
+   ~1100px de scroll muerto (el hueco negro). El panel se ancla y la lista scrollea dentro. */
+.fill-story{min-height:190vh}
+.fill-sticky{min-height:100svh;max-height:100svh;overflow:hidden}
+.fill-items{max-height:calc(100svh - 230px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:4px}
+@media(max-width:900px){.fill-items{max-height:calc(100svh - 320px)}}
+/* El truco de scroll no funcionaba: el contenedor (190vh) era más alto que el panel (100svh), así que
+   el panel se desanclaba a los 810px y quedaba una pantalla negra vacía. Se resuelve como sección
+   normal: lista en tres columnas en escritorio y caja con scroll propio en móvil. */
+.fill-story{min-height:0;padding-block:var(--space-8)}
+.fill-sticky{position:static;min-height:0;max-height:none;overflow:visible;padding-block:0}
+.fill-items{max-height:none;overflow:visible;padding-right:0}
+@media(min-width:1100px){.fill-items{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:700px) and (max-width:1099px){.fill-items{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:699px){
+  .fill-items{max-height:56svh;overflow-y:auto;border:1px solid #4a4a4a;border-radius:14px;padding:10px;overscroll-behavior:contain}
+}
