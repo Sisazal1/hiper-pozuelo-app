@@ -4,7 +4,7 @@ import {assemblyMinutes, fits, requiredMinutes, SlotUsage} from '@/src/content/c
 import {STORE_ADDRESS} from '@/src/content/store';
 import {CHECKOUT_COPY} from '@/src/content/checkout';
 import {total, CartLine} from '@/src/lib/cart';
-import {database} from '@/src/lib/db';
+import {database, LIVE_STATUS_SQL} from '@/src/lib/db';
 import {recordEvent} from '@/src/lib/events';
 import {holdExpiresAt, holdIsActive} from '@/src/lib/hold';
 import {mergeLines, validQty} from '@/src/lib/lines';
@@ -29,13 +29,21 @@ type Db = ReturnType<typeof database>;
 type SlotRow = {starts_at: string; ends_at: string; capacity_minutes: number | null; capacity_units: number | null};
 
 export type CreateOrderInput = {lines: CartLine[]; name: string; phone: string; slotId: string; sessionId: string};
-export type CreateOrderResult = {orderRef: string; token: string | null; existing?: boolean; status?: string};
+// `duplicate` is the only refusal in this module that is not the customer's mistake: the same
+// purchase is already live somewhere else. It carries no orderRef — a 409 never hands a caller
+// another tab's order reference — and it writes nothing (D-065 §3).
+export type CreateOrderResult =
+  | {duplicate: true; orderRef: null; token: null}
+  | {duplicate: false; orderRef: string; token: string | null; existing?: boolean; status?: string};
 
-// B-4 (R-055): the key is built server-side from the request, so a client cannot collapse two
-// different carts into one order and a retry of the same request cannot create a second row.
-function dedupeKey(input: CreateOrderInput, lines: CartLine[]) {
+const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
+
+// R-055 (r4), D-064 §5: one canonical form for "this purchase", and two hashes over it. The content
+// key is name | phone | slot | merged lines; the tab's key adds the session id. Built server-side, so
+// a client cannot collapse two different carts into one order and a retry cannot create a second row.
+function contentCanonical(input: CreateOrderInput, lines: CartLine[]) {
   const canonical = [...lines].sort((a, b) => a.slug.localeCompare(b.slug)).map(line => `${line.slug}:${line.qty}`).join(',');
-  return crypto.createHash('sha256').update([input.sessionId, input.name.trim(), input.phone.trim(), input.slotId, canonical].join('|')).digest('hex');
+  return [input.name.trim(), input.phone.trim(), input.slotId, canonical].join('|');
 }
 
 // R-049: a hold that ran out releases its minutes. Called before capacity is read, so an abandoned
@@ -91,14 +99,21 @@ export function createOrder(input: CreateOrderInput): CreateOrderResult {
   const clean = mergeLines(validated);
   const db = database();
   expireHolds(db);
-  const key = dedupeKey(input, clean);
-  const prior = db.prepare(`SELECT order_ref, status FROM orders WHERE dedupe_key=? AND status IN ('pending','paid','collected')`)
+  const content = contentCanonical(input, clean);
+  const contentKey = sha(content);
+  const key = sha([input.sessionId, content].join('|'));
+  const prior = db.prepare(`SELECT order_ref, status FROM orders WHERE dedupe_key=? AND ${LIVE_STATUS_SQL}`)
     .get(key) as {order_ref: string; status: string} | undefined;
   // Checked before capacity, or a retry would be refused by the capacity its own first attempt used.
   if (prior) {
-    if (prior.status === 'pending') return {orderRef: prior.order_ref, token: rotateToken(db, prior.order_ref), existing: true, status: 'pending'};
-    return {orderRef: prior.order_ref, token: null, existing: true, status: prior.status};
+    if (prior.status === 'pending') return {duplicate: false, orderRef: prior.order_ref, token: rotateToken(db, prior.order_ref), existing: true, status: 'pending'};
+    return {duplicate: false, orderRef: prior.order_ref, token: null, existing: true, status: prior.status};
   }
+  // Another tab or another device asking for the same purchase. Refused here, before the capacity
+  // read, so a 409 moves no minute of the window in either direction and writes no row.
+  const collision = db.prepare(`SELECT order_ref FROM orders WHERE content_key=? AND ${LIVE_STATUS_SQL}`)
+    .get(contentKey) as {order_ref: string} | undefined;
+  if (collision) return {duplicate: true, orderRef: null, token: null};
 
   const slot = db.prepare('SELECT starts_at, ends_at, capacity_minutes, capacity_units FROM slots WHERE id=?').get(input.slotId) as SlotRow | undefined;
   if (!slot) throw Error('Esa franja ya no está disponible. Elige otra hora.');
@@ -113,11 +128,11 @@ export function createOrder(input: CreateOrderInput): CreateOrderResult {
     return {slug: p.slug, name: p.name, qty: line.qty, priceCents: p.priceCents, groups: p.groups};
   }));
   const createdAt = new Date().toISOString();
-  db.prepare('INSERT INTO orders (order_ref,status,total_cents,contents_snapshot,pass_token_hash,name,phone,slot_id,slot_label,store_name,store_address,created_at,dedupe_key,hold_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-    .run(ref, 'pending', amount, snapshot, hashToken(raw), input.name, input.phone, input.slotId, slotLabel(slot.starts_at, slot.ends_at), 'Hiper Pozuelo', STORE_ADDRESS, createdAt, key, holdExpiresAt(createdAt));
+  db.prepare('INSERT INTO orders (order_ref,status,total_cents,contents_snapshot,pass_token_hash,name,phone,slot_id,slot_label,store_name,store_address,created_at,dedupe_key,content_key,hold_expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(ref, 'pending', amount, snapshot, hashToken(raw), input.name, input.phone, input.slotId, slotLabel(slot.starts_at, slot.ends_at), 'Hiper Pozuelo', STORE_ADDRESS, createdAt, key, contentKey, holdExpiresAt(createdAt));
   recordEvent('checkout_start', {session_id: input.sessionId});
   recordEvent('slot_selected', {slot_id: input.slotId, session_id: input.sessionId});
-  return {orderRef: ref, token: raw};
+  return {duplicate: false, orderRef: ref, token: raw};
 }
 
 export function findByRef(orderRef: string) {

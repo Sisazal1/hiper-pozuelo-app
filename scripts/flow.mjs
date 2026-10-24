@@ -171,10 +171,34 @@ try {
   assert(res.body.existing === true && res.body.orderRef === order.orderRef, `paid dedupe (${JSON.stringify(res.body)})`);
   assert(countOrders(db) === paidCount, 'paid dedupe wrote a row');
 
+  // 8. R-055 (r4) / D-064 §5: the same purchase from a second tab — a different `session_id` — is a
+  //    409 with no token and no row, not a second order. Asserted before `collected`, because the
+  //    key only lives as long as the purchase does.
+  res = await app.json('/api/checkout', {...cart, session_id: sid4});
+  assert(res.status === 409 && res.body.duplicate === true, `cross-session duplicate (${res.status} ${JSON.stringify(res.body)})`);
+  assert(res.body.orderRef === undefined && res.body.token === undefined, 'the 409 handed back an order reference or a token');
+  assert(countOrders(db) === paidCount, 'the 409 wrote a row');
+
+  // 9. six identical POSTs from six tabs, in parallel: one order and five conflicts, never six rows.
+  const raceCart = {lines: [{slug: 'habitacion', qty: 1}], name: 'Rocío M.', phone: '655555555', slotId: 'slot-1'};
+  const raceSessions = [sid, sid2, sid3, sid4, '77777777-7777-4777-8777-777777777777', '88888888-8888-4888-8888-888888888888'];
+  const raceBefore = countOrders(db);
+  const race = await Promise.all(raceSessions.map(session_id => app.json('/api/checkout', {...raceCart, session_id})));
+  assert(race.filter(r => r.status === 200).length === 1, `the race produced ${race.filter(r => r.status === 200).length} orders`);
+  assert(race.filter(r => r.status === 409).length === 5, `the race produced ${race.filter(r => r.status === 409).length} conflicts`);
+  assert(countOrders(db) === raceBefore + 1, 'the race wrote the wrong number of rows');
+
   res = await app.json('/api/mostrador', {pickup_code: paid.pickup_code, session_id: sid});
   assert(res.body.status === 'collected', 'collect');
   res = await app.json('/api/mostrador', {pickup_code: paid.pickup_code, session_id: sid});
   assert(res.body.status === 'already_collected', 'collect_twice');
+
+  // 10. R-055 (r4): `collected` releases the key, so a customer who has just picked up a pack can buy
+  //     the same pack again. The set the lookup reads is the set the index reserves.
+  const repurchase = await app.json('/api/checkout', cart);
+  assert(repurchase.status === 200 && repurchase.body.token, `repurchase after collect (${repurchase.status} ${JSON.stringify(repurchase.body)})`);
+  assert(repurchase.body.orderRef !== order.orderRef, 'the repurchase returned the order that was just collected');
+  assert(countOrders(db) === raceBefore + 2, 'the repurchase did not write exactly one row');
   res = await app.json('/api/mostrador', {action: 'refund', orderRef: order.orderRef, session_id: sid});
   assert(res.body.status === 'refunded', 'refund');
   res = await app.json('/api/mostrador', {action: 'refund', orderRef: order.orderRef, session_id: sid});
@@ -205,7 +229,7 @@ try {
   assert(capacityOf(legacyDb) === 190, `the migrated database reads ${capacityOf(legacyDb)}`);
 
   console.log('flow: 8/8 steps · order=1 · collected=1 · collect_twice=refused · refund=1 · refund_twice=refused');
-  console.log('flow+: capacity_190=200 · capacity_198=400·no row · seed_fresh=190 · seed_migrated=190 · token_required=404 · paid_dedupe=1 · refresh_token=rotated · merged_lines=1 · hold=released · expired=1 · refund_unpaid=refused');
+  console.log('flow+: capacity_190=200 · capacity_198=400·no row · seed_fresh=190 · seed_migrated=190 · token_required=404 · paid_dedupe=1 · cross_session=409 · race=1 order·5 conflicts · repurchase_after_collect=1 · refresh_token=rotated · merged_lines=1 · hold=released · expired=1 · refund_unpaid=refused');
 } finally {
   server.kill();
   legacyServer.kill();

@@ -4,11 +4,19 @@ import path from 'node:path';
 
 let db: DatabaseSync | undefined;
 
+// R-055 (r4), D-065 §3: one purchase is live while it is `pending` or `paid`. `collected`,
+// `refunded`, `declined` and `expired` release the key — without `collected` in that list a customer
+// who has just picked up a pack cannot buy the same pack again, and the money path silently refuses
+// a paying customer. Exported once and read by the partial indexes, by the `dedupe_key` lookup and
+// by the `content_key` lookup, so the two readers cannot drift apart again.
+export const LIVE_STATUSES = ['pending', 'paid'] as const;
+export const LIVE_STATUS_SQL = `status IN (${LIVE_STATUSES.map(status => `'${status}'`).join(',')})`;
+
 const CREATE_SLOTS = 'CREATE TABLE IF NOT EXISTS slots (id TEXT PRIMARY KEY, starts_at TEXT, ends_at TEXT, capacity_units INTEGER, capacity_minutes INTEGER)';
 
 const SCHEMA = `
 PRAGMA journal_mode=WAL;
-CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY, order_ref TEXT UNIQUE, status TEXT, total_cents INTEGER, contents_snapshot TEXT, pass_token_hash TEXT UNIQUE, pickup_code TEXT UNIQUE, name TEXT, phone TEXT, slot_id TEXT, slot_label TEXT, store_name TEXT, store_address TEXT, created_at TEXT, collected_at TEXT, dedupe_key TEXT, hold_expires_at TEXT);
+CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY, order_ref TEXT UNIQUE, status TEXT, total_cents INTEGER, contents_snapshot TEXT, pass_token_hash TEXT UNIQUE, pickup_code TEXT UNIQUE, name TEXT, phone TEXT, slot_id TEXT, slot_label TEXT, store_name TEXT, store_address TEXT, created_at TEXT, collected_at TEXT, dedupe_key TEXT, hold_expires_at TEXT, content_key TEXT);
 CREATE TABLE IF NOT EXISTS order_items (id INTEGER PRIMARY KEY, order_id INTEGER, pack_slug TEXT, qty INTEGER);
 ${CREATE_SLOTS};
 CREATE TABLE IF NOT EXISTS refunds (id INTEGER PRIMARY KEY, order_id INTEGER UNIQUE, reason TEXT, created_at TEXT);
@@ -36,12 +44,21 @@ function migrate(conn: DatabaseSync) {
   // R-049: a pending order is a hold with an expiry, so an abandoned checkout cannot consume the
   // window forever. NULL means "no hold recorded" and is treated as active, never as expired.
   if (!hasColumn(conn, 'orders', 'hold_expires_at')) conn.exec('ALTER TABLE orders ADD COLUMN hold_expires_at TEXT');
+  // R-055 (r4), D-064 §5: the key over the order's CONTENT (name, phone, slot, merged lines), with no
+  // session id in it, so a second tab or a second device is refused instead of minting a second
+  // order. The dedupe key stays the per-tab idempotency key; this one is what a different tab hits.
+  if (!hasColumn(conn, 'orders', 'content_key')) conn.exec('ALTER TABLE orders ADD COLUMN content_key TEXT');
   // B-2 (D-063): the key is held by a PENDING or a PAID order — keeping it on `paid` is what stops a
-  // refresh after payment from minting a second order. Refunded, declined and expired release it.
+  // refresh after payment from minting a second order. Refunded, declined, expired and collected
+  // release it (R-055 r4: whoever has collected can buy the same pack again).
   // The predicate changed and IF NOT EXISTS would retain the old definition, so the index is dropped
   // first: an index that silently keeps the old predicate is exactly the defect B-2 reported.
   conn.exec('DROP INDEX IF EXISTS orders_dedupe_pending');
-  conn.exec(`CREATE UNIQUE INDEX IF NOT EXISTS orders_dedupe_pending ON orders(dedupe_key) WHERE dedupe_key IS NOT NULL AND status IN ('pending','paid')`);
+  conn.exec(`CREATE UNIQUE INDEX IF NOT EXISTS orders_dedupe_pending ON orders(dedupe_key) WHERE dedupe_key IS NOT NULL AND ${LIVE_STATUS_SQL}`);
+  // The same predicate over the content key: two live orders may not describe the same purchase, no
+  // matter which tab asked. Dropped first for the reason above.
+  conn.exec('DROP INDEX IF EXISTS orders_content_live');
+  conn.exec(`CREATE UNIQUE INDEX IF NOT EXISTS orders_content_live ON orders(content_key) WHERE content_key IS NOT NULL AND ${LIVE_STATUS_SQL}`);
 
   if (!hasColumn(conn, 'slots', 'capacity_minutes')) conn.exec('ALTER TABLE slots ADD COLUMN capacity_minutes INTEGER');
   // An earlier commit declared `slots.id INTEGER PRIMARY KEY`, which cannot hold the 'slot-1' that
