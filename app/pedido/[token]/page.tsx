@@ -1,2 +1,34 @@
-import {notFound} from 'next/navigation'; import {findByToken} from '@/src/server/orders'; import {CHECKOUT_COPY} from '@/src/content/checkout'; export const dynamic='force-dynamic'; export const metadata={robots:{index:false,follow:false}};
-export default async function Pass({params}:{params:Promise<{token:string}>}){const {token}=await params;const row=findByToken(token);if(!row)notFound();const snapshot=JSON.parse(row.contents_snapshot);const slot=new Intl.DateTimeFormat('es-ES',{timeZone:'Europe/Madrid',dateStyle:'full',timeStyle:'short'}).format(new Date(row.created_at));return <main className="main wrap pass">{row.status==='refunded'&&<p>Pedido anulado · pago simulado, no se ha cobrado nada</p>}{row.status==='collected'&&<p>Ya recogido el {new Date(row.collected_at).toLocaleDateString('es-ES')}.</p>}<h1 className="h1">Tu pase de recogida</h1><p>{row.order_ref}</p><p>{row.store_name} · {row.store_address}</p><p>{slot}</p>{row.status!=='refunded'&&<><h2 className="h2">Código de recogida</h2><div className="pickup-code">{row.pickup_code}</div><p>{CHECKOUT_COPY.printHint}</p><h2 className="h2">Qué recoger</h2>{snapshot.map((p:any)=><section key={p.slug}><h3>{p.name} · {p.qty}</h3>{p.groups.flatMap((g:any)=>g.items).map((i:any)=><div className="row" key={i.item}><span>{i.item}</span><span>×{i.qty*p.qty}</span></div>)}</section>)}</>}<p>Demostración académica. No somos la tienda.</p></main>}
+import {notFound} from 'next/navigation';
+import {findByToken} from '@/src/server/orders';
+import {CHECKOUT_COPY} from '@/src/content/checkout';
+import {STORE_ADDRESS, PICKUP_ADDRESS_PENDING} from '@/src/content/store';
+export const dynamic = 'force-dynamic';
+export const metadata = {robots: {index: false, follow: false}};
+
+// B-6: the window is the slot the customer bought (orders.slot_label, derived from slots at
+// creation), not the moment they paid. The address prints only when a real one exists.
+export default async function Pass({params}: {params: Promise<{token: string}>}) {
+  const {token} = await params;
+  const row = findByToken(token);
+  if (!row) notFound();
+  const snapshot = JSON.parse(row.contents_snapshot);
+  return <main className="main wrap pass">
+    {row.status === 'refunded' && <p>Pedido anulado · pago simulado, no se ha cobrado nada</p>}
+    {row.status === 'collected' && <p>Ya recogido el {new Date(row.collected_at).toLocaleDateString('es-ES')}.</p>}
+    <h1 className="h1">Tu pase de recogida</h1>
+    <p>{row.order_ref}</p>
+    {STORE_ADDRESS === 'OPEN-pending' ? <p>{PICKUP_ADDRESS_PENDING}</p> : <p>{row.store_name} · {row.store_address}</p>}
+    <p>{row.slot_label}</p>
+    {row.status !== 'refunded' && <>
+      <h2 className="h2">Código de recogida</h2>
+      <div className="pickup-code">{row.pickup_code}</div>
+      <p>{CHECKOUT_COPY.printHint}</p>
+      <h2 className="h2">Qué recoger</h2>
+      {snapshot.map((p: any) => <section key={p.slug}>
+        <h3>{p.name} · {p.qty}</h3>
+        {p.groups.flatMap((g: any) => g.items).map((i: any) => <div className="row" key={i.item}><span>{i.item}</span><span>×{i.qty * p.qty}</span></div>)}
+      </section>)}
+    </>}
+    <p>Demostración académica. No somos la tienda.</p>
+  </main>;
+}

@@ -14,3 +14,6 @@ input:focus-visible,select:focus-visible{outline:3px solid #0B57D0;outline-offse
 .lineitem>span:first-child{flex:1 1 100%}
 .lineitem .stepper{margin-left:auto}
 .tile{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-warm)}
+.availability[data-availability="in_stock"]{background:#e8f4ed;color:var(--success)}
+.availability[data-availability="low_stock"]{background:#FFF4E0;color:#8A5A00}
+.availability[data-availability="sold_out"]{background:var(--surface-sunken);color:var(--ink-secondary)}
