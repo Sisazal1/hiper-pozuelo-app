@@ -14,15 +14,18 @@ export default async function Pass({params}: {params: Promise<{token: string}>})
   const snapshot = JSON.parse(row.contents_snapshot);
   return <main className="main wrap pass">
     {row.status === 'refunded' && <p>Pedido anulado · pago simulado, no se ha cobrado nada</p>}
+    {row.status === 'expired' && <p>{CHECKOUT_COPY.expiredLabel} · elige otra hora para continuar.</p>}
     {row.status === 'collected' && <p>Ya recogido el {new Date(row.collected_at).toLocaleDateString('es-ES')}.</p>}
     <h1 className="h1">Tu pase de recogida</h1>
     <p>{row.order_ref}</p>
     {STORE_ADDRESS === 'OPEN-pending' ? <p>{PICKUP_ADDRESS_PENDING}</p> : <p>{row.store_name} · {row.store_address}</p>}
     <p>{row.slot_label}</p>
-    {row.status !== 'refunded' && <>
-      <h2 className="h2">Código de recogida</h2>
-      <div className="pickup-code">{row.pickup_code}</div>
-      <p>{CHECKOUT_COPY.printHint}</p>
+    {['pending', 'paid', 'collected'].includes(row.status) && <>
+      {row.pickup_code && <>
+        <h2 className="h2">Código de recogida</h2>
+        <div className="pickup-code">{row.pickup_code}</div>
+        <p>{CHECKOUT_COPY.printHint}</p>
+      </>}
       <h2 className="h2">Qué recoger</h2>
       {snapshot.map((p: any) => <section key={p.slug}>
         <h3>{p.name} · {p.qty}</h3>
