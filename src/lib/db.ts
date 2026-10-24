@@ -8,7 +8,7 @@ const CREATE_SLOTS = 'CREATE TABLE IF NOT EXISTS slots (id TEXT PRIMARY KEY, sta
 
 const SCHEMA = `
 PRAGMA journal_mode=WAL;
-CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY, order_ref TEXT UNIQUE, status TEXT, total_cents INTEGER, contents_snapshot TEXT, pass_token_hash TEXT UNIQUE, pickup_code TEXT UNIQUE, name TEXT, phone TEXT, slot_id TEXT, slot_label TEXT, store_name TEXT, store_address TEXT, created_at TEXT, collected_at TEXT, dedupe_key TEXT);
+CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY, order_ref TEXT UNIQUE, status TEXT, total_cents INTEGER, contents_snapshot TEXT, pass_token_hash TEXT UNIQUE, pickup_code TEXT UNIQUE, name TEXT, phone TEXT, slot_id TEXT, slot_label TEXT, store_name TEXT, store_address TEXT, created_at TEXT, collected_at TEXT, dedupe_key TEXT, hold_expires_at TEXT);
 CREATE TABLE IF NOT EXISTS order_items (id INTEGER PRIMARY KEY, order_id INTEGER, pack_slug TEXT, qty INTEGER);
 ${CREATE_SLOTS};
 CREATE TABLE IF NOT EXISTS refunds (id INTEGER PRIMARY KEY, order_id INTEGER UNIQUE, reason TEXT, created_at TEXT);
@@ -31,9 +31,15 @@ function hasColumn(conn: DatabaseSync, table: string, column: string) {
 // Migrations run on every open, so a database created by an earlier commit keeps working.
 function migrate(conn: DatabaseSync) {
   if (!hasColumn(conn, 'orders', 'dedupe_key')) conn.exec('ALTER TABLE orders ADD COLUMN dedupe_key TEXT');
-  // Partial on purpose: only a PENDING order reserves its key, so a refunded order can be placed
-  // again with the same lines and a paid one is not blocked from a genuine second order.
-  conn.exec(`CREATE UNIQUE INDEX IF NOT EXISTS orders_dedupe_pending ON orders(dedupe_key) WHERE dedupe_key IS NOT NULL AND status='pending'`);
+  // R-049: a pending order is a hold with an expiry, so an abandoned checkout cannot consume the
+  // window forever. NULL means "no hold recorded" and is treated as active, never as expired.
+  if (!hasColumn(conn, 'orders', 'hold_expires_at')) conn.exec('ALTER TABLE orders ADD COLUMN hold_expires_at TEXT');
+  // B-2 (D-063): the key is held by a PENDING or a PAID order — keeping it on `paid` is what stops a
+  // refresh after payment from minting a second order. Refunded, declined and expired release it.
+  // The predicate changed and IF NOT EXISTS would retain the old definition, so the index is dropped
+  // first: an index that silently keeps the old predicate is exactly the defect B-2 reported.
+  conn.exec('DROP INDEX IF EXISTS orders_dedupe_pending');
+  conn.exec(`CREATE UNIQUE INDEX IF NOT EXISTS orders_dedupe_pending ON orders(dedupe_key) WHERE dedupe_key IS NOT NULL AND status IN ('pending','paid')`);
 
   if (!hasColumn(conn, 'slots', 'capacity_minutes')) conn.exec('ALTER TABLE slots ADD COLUMN capacity_minutes INTEGER');
   // An earlier commit declared `slots.id INTEGER PRIMARY KEY`, which cannot hold the 'slot-1' that
@@ -46,11 +52,13 @@ function migrate(conn: DatabaseSync) {
     conn.exec('DROP TABLE slots_legacy');
   }
 
-  const existing = conn.prepare('SELECT COUNT(*) AS n FROM slots').get() as {n: number};
-  if (existing.n === 0) {
-    conn.prepare('INSERT INTO slots (id,starts_at,ends_at,capacity_units,capacity_minutes) VALUES (?,?,?,?,?)')
-      .run(DEMO_SLOT.id, DEMO_SLOT.startsAt, DEMO_SLOT.endsAt, null, DEMO_SLOT.capacityMinutes);
-  }
+  // M-3 (D-063): seeded by id, not by "the table is empty". A legacy database holding any unrelated
+  // row used to boot with no slot-1 while the checkout posts slotId 'slot-1', so every order was
+  // refused and deleting the file was the only way back.
+  conn.prepare('INSERT OR IGNORE INTO slots (id,starts_at,ends_at,capacity_units,capacity_minutes) VALUES (?,?,?,?,?)')
+    .run(DEMO_SLOT.id, DEMO_SLOT.startsAt, DEMO_SLOT.endsAt, null, DEMO_SLOT.capacityMinutes);
+  conn.prepare('UPDATE slots SET capacity_minutes=? WHERE id=? AND capacity_minutes IS NULL')
+    .run(DEMO_SLOT.capacityMinutes, DEMO_SLOT.id);
 }
 
 export function database() {
