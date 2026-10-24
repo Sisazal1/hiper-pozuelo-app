@@ -3,7 +3,7 @@ import {packs} from '@/src/content/packs';
 import {eur} from '@/src/lib/format';
 import {availabilityLabel} from '@/src/content/availability';
 import {PRICE_LABEL} from '@/src/content/price';
-import {PackPlate} from '@/src/components/PackPlate';
+import {PackVisual} from '@/src/components/PackVisual';
 import {JsonLd} from '@/src/components/JsonLd';
 import {SITE_URL} from '@/src/content/site';
 import type {Metadata} from 'next';
@@ -85,11 +85,11 @@ async function HomeWithLang({searchParams}: {searchParams?: Promise<{lang?: stri
       <div className="pack-grid">
         {packs.map(p => (
           <article className="pack-card" key={p.slug}>
-            <PackPlate units={p.units}/>
+            <PackVisual slug={p.slug} units={p.units}/>
             <div className="pack-card-body">
               <h3>{p.name}</h3>
               <p className="price">{eur(p.priceCents)}</p>
-              <span className="availability" data-availability={p.availability}>{c.availability[p.availability as keyof typeof c.availability]}</span>
+              <span className="availability" data-availability={p.availability}>{lang === 'en' ? c.availability[p.availability as keyof typeof c.availability] : availabilityLabel(p.availability)}</span>
               <p className="micro">{PRICE_LABEL[p.dataStatus]}</p>
               <Link className="btn secondary pack-cta" href={`/packs/${p.slug}`}>{c.viewPack}</Link>
             </div>
@@ -100,12 +100,15 @@ async function HomeWithLang({searchParams}: {searchParams?: Promise<{lang?: stri
 
     <section data-block="5" className="home-block wrap" aria-labelledby="contents-heading">
       <h2 id="contents-heading">{c.contents}</h2>
-      <div className="contents-grid">
+      <div className="contents-list">
         {packs.map(pack => (
-          <article className="data-panel" key={pack.slug}>
-            <h3>{pack.name}</h3>
-            <ul>{pack.groups.flatMap(group => group.items).map(item => <li key={`${pack.slug}-${item.item}`}>{item.item} ×{item.qty}</li>)}</ul>
-          </article>
+          <details className="contents-panel" key={pack.slug}>
+            <summary>
+              <span>{pack.name}</span>
+              <span className="contents-count">{pack.units} artículos</span>
+            </summary>
+            <ul>{pack.groups.flatMap(group => group.items).map(item => <li key={`${pack.slug}-${item.item}`}><span>{item.item}</span><b>×{item.qty}</b></li>)}</ul>
+          </details>
         ))}
       </div>
     </section>
