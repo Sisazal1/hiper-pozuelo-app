@@ -2,7 +2,7 @@ import type {Metadata} from 'next';
 import Link from 'next/link';
 import {PICKUP_ADDRESS_PENDING} from '@/src/content/store';
 
-export const metadata: Metadata = {title: 'Recogida en tienda'};
+export const metadata: Metadata = {title: 'Recogida en tienda', description: 'Cómo y cuándo recoger tu pack en tienda.', alternates: {canonical: '/recogida'}};
 
 export default function Pickup() {
   return (

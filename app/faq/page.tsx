@@ -2,7 +2,7 @@ import type {Metadata} from 'next';
 import Link from 'next/link';
 import {PICKUP_ADDRESS_PENDING} from '@/src/content/store';
 
-export const metadata: Metadata = {title: 'Preguntas frecuentes'};
+export const metadata: Metadata = {title: 'Preguntas frecuentes', description: 'Resuelve tus dudas sobre packs, pago, recogida y devoluciones.', alternates: {canonical: '/faq'}};
 
 const QA: {q: string; a: string}[] = [
   {q: '¿Cuánto tarda la recogida?', a: 'Preparamos el pack el mismo día. Al pagar eliges una franja de recogida y el pase te dice cuándo ir. Si no puedes acudir, el pedido caduca y los artículos vuelven a estar disponibles.'},

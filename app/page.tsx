@@ -4,6 +4,11 @@ import {eur} from '@/src/lib/format';
 import {availabilityLabel} from '@/src/content/availability';
 import {PRICE_LABEL} from '@/src/content/price';
 import {PackPlate} from '@/src/components/PackPlate';
+import {JsonLd} from '@/src/components/JsonLd';
+import {SITE_URL} from '@/src/content/site';
+import type {Metadata} from 'next';
+
+export const metadata: Metadata = {title: 'Packs para estudiantes', description: 'Cuatro packs para tu primer día de piso.', alternates: {canonical: '/'}};
 
 const STEPS = [
   {n: 1, title: 'Elige tu pack', line: 'Tienes cuatro: baño, cocina, habitación y completo.'},
@@ -41,7 +46,7 @@ function excludedPacks(pack: typeof packs[number]) {
 }
 
 export default function Home() {
-  return <main className="site-home">
+  return <><JsonLd data={{'@context': 'https://schema.org', '@type': 'Organization', name: 'Hiper Pozuelo', url: SITE_URL, areaServed: 'Pozuelo de Alarcón'}}/><main className="site-home">
     <section data-block="2" className="home-block hook wrap">
       <div className="hook-copy">
         <p className="eyebrow">Packs para estudiantes</p>
@@ -167,5 +172,5 @@ export default function Home() {
       <p>Elige tu pack: verás todo lo que entra antes de pagar.</p>
       <Link className="btn" href="/packs">Ver los 4 packs</Link>
     </section>
-  </main>;
+  </main></>;
 }

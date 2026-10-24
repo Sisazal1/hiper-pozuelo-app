@@ -3,7 +3,7 @@ import {findByToken} from '@/src/server/orders';
 import {CHECKOUT_COPY} from '@/src/content/checkout';
 import {STORE_ADDRESS, PICKUP_ADDRESS_PENDING} from '@/src/content/store';
 export const dynamic = 'force-dynamic';
-export const metadata = {robots: {index: false, follow: false}};
+export const metadata = {title: 'Tu pase', description: 'Pase de recogida de Hiper Pozuelo.', robots: {index: false, follow: false}};
 
 // B-6: the window is the slot the customer bought (orders.slot_label, derived from slots at
 // creation), not the moment they paid. The address prints only when a real one exists.

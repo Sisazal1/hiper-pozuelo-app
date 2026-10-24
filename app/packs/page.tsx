@@ -6,7 +6,7 @@ import {SortSelect} from '@/src/components/SortSelect';
 import {ResultsCount} from '@/src/components/ResultsCount';
 import {PackCard} from '@/src/components/PackCard';
 
-export const metadata: Metadata = {title: 'Los 4 packs'};
+export const metadata: Metadata = {title: 'Los 4 packs', description: 'Compara qué entra, cuánto cuesta y cuándo recoges cada pack.', alternates: {canonical: '/packs'}};
 type SP = Record<string, string | string[] | undefined>;
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? '';
 const coverLabels = [{value: 'bano', label: 'Baño'}, {value: 'cocina', label: 'Cocina'}, {value: 'habitacion', label: 'Habitación'}];

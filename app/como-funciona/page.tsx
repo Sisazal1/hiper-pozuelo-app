@@ -1,7 +1,7 @@
 import type {Metadata} from 'next';
 import Link from 'next/link';
 
-export const metadata: Metadata = {title: 'Cómo funciona'};
+export const metadata: Metadata = {title: 'Cómo funciona', description: 'Elige tu pack, simula el pago y recoge en tienda.', alternates: {canonical: '/como-funciona'}};
 
 const STEPS = [
   {n: '01', t: 'Elige tu pack', d: 'Cuatro packs: baño, cocina, habitación y el completo con los tres. Cada uno con la lista exacta de lo que entra y lo que no.'},

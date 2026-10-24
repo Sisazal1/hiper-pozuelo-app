@@ -1,7 +1,7 @@
 import type {Metadata} from 'next';
 import Link from 'next/link';
 
-export const metadata: Metadata = {title: 'Información legal'};
+export const metadata: Metadata = {title: 'Información legal', description: 'Condiciones, devoluciones, privacidad y aviso legal.', alternates: {canonical: '/legal'}};
 
 const DOCS = [
   {slug: 'condiciones-compra', title: 'Condiciones de compra', d: 'Qué compras, cómo se paga, cuándo y dónde se recoge, y qué pasa si algo falla.'},

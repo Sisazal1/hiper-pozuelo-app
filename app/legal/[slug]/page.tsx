@@ -1,6 +1,7 @@
 import {notFound} from 'next/navigation';
 import {CHECKOUT_COPY} from '@/src/content/checkout';
 import {ANALYTICS_MEASUREMENT} from '@/src/content/disclosure';
+import {SITE_URL} from '@/src/content/site';
 
 // m-3 (D-063): the heading was the slug, so the page titled itself `aviso-legal` in lowercase.
 const HEADINGS: Record<string, string> = {
@@ -15,7 +16,7 @@ export function generateStaticParams() {
   return slugs.map(slug => ({slug}));
 }
 
-export const metadata = {robots: {index: false, follow: false}};
+export async function generateMetadata({params}: {params: Promise<{slug: string}>}) {const {slug} = await params; const title = HEADINGS[slug] ?? 'Información legal'; return {title, description: `${title} de Hiper Pozuelo.`, alternates: {canonical: `${SITE_URL}/legal/${slug}`}, robots: {index: false, follow: false}};}
 
 export default async function Legal({params}: {params: Promise<{slug: string}>}) {
   const {slug} = await params;
