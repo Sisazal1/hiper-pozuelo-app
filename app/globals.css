@@ -6,6 +6,12 @@ input,select{width:100%;min-height:48px;padding:var(--space-3) var(--space-4);bo
 input:focus-visible,select:focus-visible{outline:3px solid #0B57D0;outline-offset:2px;border-color:var(--red-action)}
 .formmsg{margin:var(--space-4) 0;padding:var(--space-3) var(--space-4);border-radius:var(--radius-sm);background:var(--red-tint);color:var(--danger);font-weight:600}
 .formmsg:empty{display:none}
+/* design-system.md §5.8 Alert: 20 px icon · heading 16/600 · body 16/400 · one optional action. */
+.alert{display:flex;gap:var(--space-3);margin:var(--space-4) 0;padding:var(--space-4);border:1px solid #B000204D;border-radius:var(--radius-md);background:var(--red-tint);color:var(--ink)}
+.alert svg{flex:0 0 20px;width:20px;height:20px;margin-top:2px;color:var(--danger)}
+.alert h3{font-size:var(--text-body);font-weight:600;margin:0}
+.alert p{margin:var(--space-1) 0 0}
+.alert .btn{margin-top:var(--space-3)}
 .stepper{display:inline-flex;align-items:center;gap:var(--space-2)}
 .stepper button{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);font-weight:700;font-size:var(--text-h3);line-height:1}
 .stepper button:disabled{color:var(--ink-disabled);background:var(--surface-sunken);cursor:not-allowed}

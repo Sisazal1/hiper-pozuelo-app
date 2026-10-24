@@ -33,8 +33,8 @@ export type CreateOrderInput = {lines: CartLine[]; name: string; phone: string; 
 // purchase is already live somewhere else. It carries no orderRef — a 409 never hands a caller
 // another tab's order reference — and it writes nothing (D-065 §3).
 export type CreateOrderResult =
-  | {duplicate: true; orderRef: null; token: null}
-  | {duplicate: false; orderRef: string; token: string | null; existing?: boolean; status?: string};
+  | {duplicate: true; orderRef: null; token: null; totalCents: null}
+  | {duplicate: false; orderRef: string; token: string | null; totalCents: number; existing?: boolean; status?: string};
 
 const sha = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
@@ -104,18 +104,18 @@ export function createOrder(input: CreateOrderInput): CreateOrderResult {
   const content = contentCanonical(input, clean);
   const contentKey = sha(content);
   const key = sha([input.sessionId, content].join('|'));
-  const prior = db.prepare(`SELECT order_ref, status FROM orders WHERE dedupe_key=? AND ${LIVE_STATUS_SQL}`)
-    .get(key) as {order_ref: string; status: string} | undefined;
+  const prior = db.prepare(`SELECT order_ref, status, total_cents FROM orders WHERE dedupe_key=? AND ${LIVE_STATUS_SQL}`)
+    .get(key) as {order_ref: string; status: string; total_cents: number} | undefined;
   // Checked before capacity, or a retry would be refused by the capacity its own first attempt used.
   if (prior) {
-    if (prior.status === 'pending') return {duplicate: false, orderRef: prior.order_ref, token: rotateToken(db, prior.order_ref), existing: true, status: 'pending'};
-    return {duplicate: false, orderRef: prior.order_ref, token: null, existing: true, status: prior.status};
+    if (prior.status === 'pending') return {duplicate: false, orderRef: prior.order_ref, token: rotateToken(db, prior.order_ref), totalCents: Number(prior.total_cents), existing: true, status: 'pending'};
+    return {duplicate: false, orderRef: prior.order_ref, token: null, totalCents: Number(prior.total_cents), existing: true, status: prior.status};
   }
   // Another tab or another device asking for the same purchase. Refused here, before the capacity
   // read, so a 409 moves no minute of the window in either direction and writes no row.
   const collision = db.prepare(`SELECT order_ref FROM orders WHERE content_key=? AND ${LIVE_STATUS_SQL}`)
     .get(contentKey) as {order_ref: string} | undefined;
-  if (collision) return {duplicate: true, orderRef: null, token: null};
+  if (collision) return {duplicate: true, orderRef: null, token: null, totalCents: null};
 
   const slot = db.prepare('SELECT starts_at, ends_at, capacity_minutes, capacity_units FROM slots WHERE id=?').get(input.slotId) as SlotRow | undefined;
   if (!slot) throw Error('Esa franja ya no está disponible. Elige otra hora.');
@@ -134,7 +134,10 @@ export function createOrder(input: CreateOrderInput): CreateOrderResult {
     .run(ref, 'pending', amount, snapshot, hashToken(raw), input.name, input.phone, input.slotId, slotLabel(slot.starts_at, slot.ends_at), 'Hiper Pozuelo', STORE_ADDRESS, createdAt, key, contentKey, holdExpiresAt(createdAt));
   recordEvent('checkout_start', {session_id: input.sessionId});
   recordEvent('slot_selected', {slot_id: input.slotId, session_id: input.sessionId});
-  return {duplicate: false, orderRef: ref, token: raw};
+  // `totalCents` travels with the order because step 2 charges the ORDER, not the cart: with the
+  // amount read from cart state, editing the cart and pressing F5 offered 59,90 € for a 32,90 €
+  // order (D-065 §5c). The number is the server's, never the client's.
+  return {duplicate: false, orderRef: ref, token: raw, totalCents: amount};
 }
 
 export function findByRef(orderRef: string) {
