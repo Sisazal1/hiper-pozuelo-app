@@ -1,6 +1,9 @@
 import {DatabaseSync} from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
+// Relative and with the extension, not the `@/` alias, so `node --test` can import this module
+// directly (R-099b). `allowImportingTsExtensions` is on in tsconfig.json for the same reason.
+import {holdExpiresAt} from './hold.ts';
 
 let db: DatabaseSync | undefined;
 
@@ -42,8 +45,33 @@ function hasColumn(conn: DatabaseSync, table: string, column: string) {
 function migrate(conn: DatabaseSync) {
   if (!hasColumn(conn, 'orders', 'dedupe_key')) conn.exec('ALTER TABLE orders ADD COLUMN dedupe_key TEXT');
   // R-049: a pending order is a hold with an expiry, so an abandoned checkout cannot consume the
-  // window forever. NULL means "no hold recorded" and is treated as active, never as expired.
+  // window forever. A row with no recorded expiry is handled below, from its own created_at.
   if (!hasColumn(conn, 'orders', 'hold_expires_at')) conn.exec('ALTER TABLE orders ADD COLUMN hold_expires_at TEXT');
+  // R-049 (r3), D-065 §2: a hold with no end is not a hold. A row written before the column existed
+  // gets its expiry from its own created_at — the clock started at creation, not at this migration —
+  // and one whose window has already elapsed is retired here, so a single legacy row cannot close
+  // the window forever while `refund` refuses it. A pending row with no readable creation date
+  // cannot be dated at all, and nothing in the demo writes one, so refusing it costs no real order.
+  const retire = conn.prepare(`UPDATE orders SET status='expired' WHERE id=? AND status='pending'`);
+  const backfill = conn.prepare('UPDATE orders SET hold_expires_at=? WHERE id=?');
+  const undatedPending = conn.prepare(`SELECT id, created_at FROM orders WHERE status='pending' AND hold_expires_at IS NULL`)
+    .all() as {id: number; created_at: string | null}[];
+  for (const row of undatedPending) {
+    let expiry: string | null = null;
+    if (row.created_at) {
+      try {
+        expiry = holdExpiresAt(row.created_at);
+      } catch {
+        expiry = null;
+      }
+    }
+    if (!expiry) {
+      retire.run(row.id);
+      continue;
+    }
+    backfill.run(expiry, row.id);
+    if (new Date(expiry).getTime() <= Date.now()) retire.run(row.id);
+  }
   // R-055 (r4), D-064 §5: the key over the order's CONTENT (name, phone, slot, merged lines), with no
   // session id in it, so a second tab or a second device is refused instead of minting a second
   // order. The dedupe key stays the per-tab idempotency key; this one is what a different tab hits.

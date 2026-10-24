@@ -24,8 +24,11 @@ test('R-049 · a pending order consumes the window only while its hold is alive'
   const now = new Date('2026-10-24T08:05:00.000Z');
   assert.equal(holdIsActive('pending', '2026-10-24T08:10:00.000Z', now), true);
   assert.equal(holdIsActive('pending', '2026-10-24T08:01:00.000Z', now), false);
-  // An order written before the column existed carries NULL: treated as active, never as expired.
-  assert.equal(holdIsActive('pending', null, now), true);
+  // R-049 (r3), D-065 §2: NULL is not "active forever" — the clock falls back to the row's own
+  // created_at, and a pending row with neither an expiry nor a date is not a hold at all.
+  assert.equal(holdIsActive('pending', null, now, '2026-10-24T08:02:00.000Z'), true);
+  assert.equal(holdIsActive('pending', null, now, '2026-10-24T07:00:00.000Z'), false);
+  assert.equal(holdIsActive('pending', null, now), false);
 });
 
 test('R-049 · paid and collected consume forever, refunded/declined/expired never do', () => {

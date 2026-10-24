@@ -16,13 +16,17 @@ export function holdExpiresAt(createdAt: string | Date, minutes = holdMinutes())
 }
 
 // What the window sees. A paid or collected order consumes its minutes forever; a pending one
-// consumes them only while the hold is alive. NULL means no hold was recorded (an order created
-// before R-049) and is treated as active, so a migration never silently overbooks.
-export function holdIsActive(status: string, expiresAt: string | null, now = new Date()): boolean {
+// consumes them only while the hold is alive.
+// R-049 (r3), D-065 §2: NULL does NOT mean "active forever". That reading was right about the
+// direction of safety and wrong about its duration — nothing ever ended the hold, so one legacy row
+// could consume a window for good and `refund` refuses an unpaid order, leaving staff no remedy. A
+// row with no recorded expiry falls back to its own `created_at + HOLD` (the clock started at
+// creation, not at the migration), and a pending row with no date at all is not a hold.
+export function holdIsActive(status: string, expiresAt: string | null, now = new Date(), createdAt?: string | null): boolean {
   if (status === 'paid' || status === 'collected') return true;
   if (status !== 'pending') return false;
-  if (!expiresAt) return true;
-  const end = new Date(expiresAt).getTime();
-  if (Number.isNaN(end)) return true;
+  const recorded = expiresAt ? new Date(expiresAt).getTime() : NaN;
+  const end = Number.isNaN(recorded) && createdAt ? new Date(holdExpiresAt(createdAt)).getTime() : recorded;
+  if (Number.isNaN(end)) return false;
   return end > now.getTime();
 }

@@ -92,11 +92,16 @@ const capacityOf = file => {
 
 // D-064 §4: the database Simon already has was written at 240 by an earlier commit. The seed has to
 // reach it, or the same digest ships two windows and the gate cannot see the difference.
+// D-065 §2: it also carries one pending order written before `hold_expires_at` existed — 90 of the
+// window's minutes, three hours old, and previously held for ever.
 {
   const conn = new DatabaseSync(legacyDb);
   conn.exec('CREATE TABLE slots (id TEXT PRIMARY KEY, starts_at TEXT, ends_at TEXT, capacity_units INTEGER, capacity_minutes INTEGER)');
   conn.prepare('INSERT INTO slots (id,starts_at,ends_at,capacity_units,capacity_minutes) VALUES (?,?,?,?,?)')
     .run('slot-1', '2026-10-24T08:00:00.000Z', '2026-10-24T12:00:00.000Z', null, 240);
+  conn.exec('CREATE TABLE orders (id INTEGER PRIMARY KEY, order_ref TEXT UNIQUE, status TEXT, total_cents INTEGER, contents_snapshot TEXT, pass_token_hash TEXT UNIQUE, pickup_code TEXT UNIQUE, name TEXT, phone TEXT, slot_id TEXT, slot_label TEXT, store_name TEXT, store_address TEXT, created_at TEXT, collected_at TEXT, dedupe_key TEXT)');
+  conn.prepare('INSERT INTO orders (order_ref,status,total_cents,contents_snapshot,name,phone,slot_id,created_at) VALUES (?,?,?,?,?,?,?,?)')
+    .run('HZ-LEGACY', 'pending', 3290, JSON.stringify([{slug: 'completo', qty: 5}]), 'Vieja R.', '600000001', 'slot-1', new Date(Date.now() - 3 * 3_600_000).toISOString());
   conn.close();
 }
 assert(capacityOf(legacyDb) === 240, 'the legacy fixture has to start at 240');
@@ -221,15 +226,17 @@ try {
   res = await app.json('/api/pay', {orderRef: again.body.orderRef, token: again.body.token, session_id: sid2});
   assert(res.body.status === 'paid', 'pay after refresh');
 
-  // 10. R-041 / R-042b, D-064 §4: the seed reaches a database that already exists, not only a fresh
-  //     file, and the window it opens with is the one the requirement's fixture measures.
+  // 11. R-041 / R-042b, D-064 §4: the seed reaches a database that already exists, not only a fresh
+  //     file. R-049 (r3), D-065 §2: the legacy pending row is retired on that first open, and the
+  //     at-the-cap cart — which needs every one of the 190 minutes — is what proves its 90 came back.
   assert(capacityOf(db) === 190, `a fresh database reads ${capacityOf(db)}`);
-  res = await legacy.json('/api/checkout', {lines: [{slug: 'bano', qty: 1}], name: 'Segunda B.', phone: '644444444', slotId: 'slot-1', session_id: sid4});
-  assert(res.status === 200, `the migrated database refused its first order (${res.status} ${JSON.stringify(res.body)})`);
+  res = await legacy.json('/api/checkout', {lines: [{slug: 'completo', qty: 5}, {slug: 'habitacion', qty: 5}, {slug: 'cocina', qty: 5}], name: 'Segunda B.', phone: '644444444', slotId: 'slot-1', session_id: sid4});
+  assert(res.status === 200, `the migrated database refused the at-the-cap cart (${res.status} ${JSON.stringify(res.body)})`);
+  assert(statusOf(legacyDb, 'HZ-LEGACY') === 'expired', `the legacy pending row is ${statusOf(legacyDb, 'HZ-LEGACY')}`);
   assert(capacityOf(legacyDb) === 190, `the migrated database reads ${capacityOf(legacyDb)}`);
 
   console.log('flow: 8/8 steps · order=1 · collected=1 · collect_twice=refused · refund=1 · refund_twice=refused');
-  console.log('flow+: capacity_190=200 · capacity_198=400·no row · seed_fresh=190 · seed_migrated=190 · token_required=404 · paid_dedupe=1 · cross_session=409 · race=1 order·5 conflicts · repurchase_after_collect=1 · refresh_token=rotated · merged_lines=1 · hold=released · expired=1 · refund_unpaid=refused');
+  console.log('flow+: capacity_190=200 · capacity_198=400·no row · seed_fresh=190 · seed_migrated=190 · legacy_pending=expired · token_required=404 · paid_dedupe=1 · cross_session=409 · race=1 order·5 conflicts · repurchase_after_collect=1 · refresh_token=rotated · merged_lines=1 · hold=released · expired=1 · refund_unpaid=refused');
 } finally {
   server.kill();
   legacyServer.kill();

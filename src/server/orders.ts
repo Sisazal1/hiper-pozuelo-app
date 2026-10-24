@@ -60,14 +60,16 @@ function usageOfLines(lines: CartLine[]): SlotUsage {
 }
 
 // R-042b: what the slot already holds. paid/collected consume for good; a pending order consumes
-// only while its hold is alive (R-049); refunded, declined and expired release.
+// only while its hold is alive (R-049), with the clock falling back to the row's created_at when no
+// expiry was recorded; refunded, declined and expired release.
 function usageOfSlot(db: Db, slotId: string): SlotUsage {
-  const rows = db.prepare(`SELECT contents_snapshot, status, hold_expires_at FROM orders WHERE slot_id=? AND status IN ('pending','paid','collected')`)
-    .all(slotId) as {contents_snapshot: string; status: string; hold_expires_at: string | null}[];
+  const rows = db.prepare(`SELECT contents_snapshot, status, hold_expires_at, created_at FROM orders WHERE slot_id=? AND status IN ('pending','paid','collected')`)
+    .all(slotId) as {contents_snapshot: string; status: string; hold_expires_at: string | null; created_at: string | null}[];
+  const now = new Date();
   let minutes = 0;
   let units = 0;
   for (const row of rows) {
-    if (!holdIsActive(row.status, row.hold_expires_at)) continue;
+    if (!holdIsActive(row.status, row.hold_expires_at, now, row.created_at)) continue;
     for (const line of JSON.parse(row.contents_snapshot) as CartLine[]) {
       minutes += assemblyMinutes(line.slug) * line.qty;
       units += (packs.find(p => p.slug === line.slug)?.units ?? 0) * line.qty;
@@ -155,7 +157,7 @@ export function markPaid(orderRef: string, result: 'paid' | 'declined', sessionI
   if (row.status === 'paid' || row.status === 'collected') return 'paid';
   if (row.status === 'refunded') return 'declined';
   // R-049: an expired hold is not payable — the minutes it reserved are already back in the window.
-  if (row.status === 'expired' || (row.status === 'pending' && !holdIsActive(row.status, row.hold_expires_at))) {
+  if (row.status === 'expired' || (row.status === 'pending' && !holdIsActive(row.status, row.hold_expires_at, new Date(), row.created_at))) {
     db.prepare(`UPDATE orders SET status='expired' WHERE id=? AND status='pending'`).run(row.id);
     throw Error(CHECKOUT_COPY.holdExpired);
   }
