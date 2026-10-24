@@ -1,8 +1,9 @@
 import type {Metadata} from 'next';
-import {AFFILIATION_LINE, FRAME_LEAD} from '@/src/content/disclosure';
+import {FRAME_LEAD} from '@/src/content/disclosure';
 import {SessionSource} from '@/src/components/SessionSource';
 import {SiteHeader} from '@/src/components/SiteHeader';
 import {SiteFooter} from '@/src/components/SiteFooter';
+import {SiteDisclosureBand} from '@/src/components/SiteDisclosureBand';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,8 +15,8 @@ export default function Layout({children}: {children: React.ReactNode}) {
   return (
     <html lang="es">
       <body>
+        <SiteDisclosureBand/>
         <SessionSource/>
-        <div className="band" role="region" aria-label="Aviso de demostración académica">{AFFILIATION_LINE.none}</div>
         <SiteHeader/>
         {children}
         <SiteFooter/>

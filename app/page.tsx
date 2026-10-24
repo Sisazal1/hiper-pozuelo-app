@@ -1,64 +1,20 @@
 import Link from 'next/link';
 import {packs} from '@/src/content/packs';
 import {eur} from '@/src/lib/format';
-import {PRICE_LABEL, TRUST_PRICE_A} from '@/src/content/price';
-import {PROVENANCE_NOTE} from '@/src/content/disclosure';
 import {availabilityLabel} from '@/src/content/availability';
-import {PackCover} from '@/src/components/PackCover';
+import {PRICE_LABEL} from '@/src/content/price';
+import {PackPlate} from '@/src/components/PackPlate';
 
-export default function Home(){
-  const from = eur(Math.min(...packs.map(p => p.priceCents)));
-  return (
-    <main className="main wrap">
-      <section className="hero">
-        <div className="hero-copy">
-          <div className="eyebrow">Packs para estudiantes</div>
-          <h1 className="h1">Todo lo que necesitas para tu nueva vida en Madrid</h1>
-          <p className="hero-lead">Mira qué entra, cuánto cuesta y cuándo lo recoges.</p>
-          <div className="hero-meta">
-            <span>{packs.length} packs</span><span>desde {from}</span><span>recogida en tienda</span>
-          </div>
-          <Link className="btn" href="/packs">Ver los 4 packs</Link>
-        </div>
-        <ul className="hero-index">
-          {packs.map(p => (
-            <li key={p.slug}>
-              <Link href={`/packs/${p.slug}`}>
-                <span className="hi-name">{p.name}</span>
-                <span className="hi-units">{p.units} artículos</span>
-                <span className="hi-price">{eur(p.priceCents)}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <div className="grid promises">
-        {['Recogida en tienda', 'Pago simulado, sin cargo', TRUST_PRICE_A].map(x => (
-          <div className="cardbody tile" key={x}>{x}</div>
-        ))}
-      </div>
-
-      <h2 className="h2">Packs para estudiantes</h2>
-      <div className="grid">
-        {packs.map(p => (
-          <article className="card packcard" key={p.slug}>
-            <PackCover name={p.name} units={p.units} />
-            <div className="cardbody">
-              <h3>{p.name}</h3>
-              <ul className="peek">
-                {p.groups[0]?.items.slice(0, 3).map(i => <li key={i.item}>{i.item}</li>)}
-                <li className="peek-more">y {Math.max(p.units - 3, 0)} más</li>
-              </ul>
-              <div className="price">{eur(p.priceCents)}</div>
-              <span className="label">{PRICE_LABEL[p.dataStatus]}</span>
-              <span className="availability" data-availability={p.availability}>{availabilityLabel(p.availability)}</span>
-              <p className="label">{PROVENANCE_NOTE}</p>
-              <Link className="btn secondary" href={`/packs/${p.slug}`}>Ver pack</Link>
-            </div>
-          </article>
-        ))}
-      </div>
-    </main>
-  );
+export default function Home() {
+  return <main className="site-home">
+    <section data-block="2" className="home-block hook wrap"><p className="eyebrow">Packs para estudiantes</p><h1>Cuatro packs para tu primer día de piso.</h1><p className="home-lead">Mira qué entra, cuánto cuesta y cuándo lo recoges.</p><div className="cta-row"><Link className="btn" href="/packs">Ver los 4 packs</Link><a className="btn secondary" href="#como-funciona">Cómo funciona</a></div></section>
+    <section data-block="3" className="trust-row wrap" aria-label="Confianza"><p>Recogida en tienda · Gratis</p><p>Pago simulado, sin cargo</p><p>Precio de demostración · IVA incluido</p></section>
+    <section data-block="4" className="home-block wrap" aria-labelledby="packs-heading"><h2 id="packs-heading">Packs para estudiantes</h2><div className="pack-grid">{packs.map(p => <article className="pack-card" key={p.slug}><PackPlate name={p.name} units={p.units} price={eur(p.priceCents)} size="small"/><div className="pack-card-body"><h3>{p.name}</h3><p className="item-count">{p.units} artículos</p><p className="price">{eur(p.priceCents)}</p><span className="availability" data-availability={p.availability}>{availabilityLabel(p.availability)}</span><p className="micro">{PRICE_LABEL[p.dataStatus]}</p></div></article>)}</div></section>
+    <section data-block="5" className="home-block wrap" aria-labelledby="contents-heading"><h2 id="contents-heading">Qué entra</h2><div className="contents-grid">{packs.map(pack => <article className="data-panel" key={pack.slug}><h3>{pack.name}</h3><ul>{pack.groups.flatMap(group => group.items).map(item => <li key={`${pack.slug}-${item.item}`}>{item.item} ×{item.qty}</li>)}</ul></article>)}</div></section>
+    <section data-block="6" className="home-block wrap" aria-labelledby="coverage-heading"><h2 id="coverage-heading">Qué cubre cada pack</h2><div className="comparison-grid">{packs.map(pack => <article className="data-panel" key={pack.slug}><h3>{pack.name}</h3><p className="item-count">{pack.units} artículos</p><p>{pack.groups.length} grupos</p><p className="price">{eur(pack.priceCents)}</p><p>{pack.notIncluded.join(' · ')}</p></article>)}</div></section>
+    <section data-block="7" id="como-funciona" className="home-block wrap" aria-labelledby="how-heading"><h2 id="how-heading">Cómo funciona</h2><ol className="steps"><li><strong>1</strong>{/* PENDIENTE @marketing */}</li><li><strong>2</strong>{/* PENDIENTE @marketing */}</li><li><strong>3</strong>{/* PENDIENTE @marketing */}</li></ol></section>
+    <section data-block="8" className="home-block wrap" aria-labelledby="pickup-heading"><h2 id="pickup-heading">Dónde lo recoges</h2><div className="data-panel"><p>Recogida en tienda. Sin envíos.</p></div></section>
+    <section data-block="9" className="home-block wrap" aria-labelledby="questions-heading"><h2 id="questions-heading">Dudas antes de comprar</h2><div className="faq-list">{[1, 2, 3, 4].map(number => <details key={number}><summary>{/* PENDIENTE @marketing */}</summary>{/* PENDIENTE @marketing */}</details>)}</div></section>
+    <section data-block="10" className="home-block closure wrap"><p>Vas a ver todo lo que entra antes de pagar.</p><Link className="btn" href="/packs">Ver los 4 packs</Link></section>
+  </main>;
 }
