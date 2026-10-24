@@ -7,7 +7,10 @@ import {SiteDisclosureBand} from '@/src/components/SiteDisclosureBand';
 import {SITE_URL} from '@/src/content/site';
 import {headers} from 'next/headers';
 import {type Lang} from '@/src/content/lang';
+import {Inter} from 'next/font/google';
 import './globals.css';
+
+const inter = Inter({subsets: ['latin'], display: 'swap', variable: '--font-inter'});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -19,7 +22,7 @@ export default async function Layout({children}: {children: React.ReactNode}) {
   const lang = ((await headers()).get('x-site-lang') === 'en' ? 'en' : 'es') as Lang;
   return (
     <html lang={lang} dir="ltr">
-      <body>
+      <body className={inter.variable}>
         <SiteDisclosureBand lang={lang}/>
         <SessionSource/>
         <SiteHeader lang={lang}/>
