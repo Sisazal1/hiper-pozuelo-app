@@ -6,174 +6,22 @@ import {PRICE_LABEL} from '@/src/content/price';
 import {PackVisual} from '@/src/components/PackVisual';
 import {JsonLd} from '@/src/components/JsonLd';
 import {SITE_URL} from '@/src/content/site';
-import type {Metadata} from 'next';
 import {copyFor, type Lang} from '@/src/content/lang';
+import type {Metadata} from 'next';
 
 export const metadata: Metadata = {title: 'Packs para estudiantes', description: 'Cuatro packs para tu primer día de piso.', alternates: {canonical: '/'}};
-
-const STEPS = [
-  {n: 1, title: 'Elige tu pack', line: 'Tienes cuatro: baño, cocina, habitación y completo.'},
-  {n: 2, title: 'Paga una vez', line: 'Precio con IVA incluido, sin coste añadido. En la demo el pago es simulado.'},
-  {n: 3, title: 'Recoge con un código', line: 'Te damos un código de 6 caracteres. Con eso basta en el mostrador.'},
-];
-
-const QUESTIONS = [
-  {
-    q: '¿Enviáis a casa o solo se recoge?',
-    a: 'No. Solo se recoge en tienda, en la franja que elijas. No hay envío.',
-  },
-  {
-    q: '¿Cuánto tarda la recogida?',
-    a: 'Eliges día y hora al pagar y lo preparamos antes de que llegues. No hay espera de reparto.',
-  },
-  {
-    q: '¿Puedo devolverlo?',
-    a: 'Sí, tienes 14 días desde la recogida. Las condiciones están en Condiciones de compra.',
-  },
-  {
-    q: '¿Y si no puedo ir a recogerlo?',
-    a: 'Puede venir otra persona con tu código. Si se te pasa la franja, el pedido caduca y los artículos vuelven a estar disponibles.',
-  },
-];
-
-
-// "No incluye" a nivel de pack, derivado de lo que el propio pack declara excluir:
-// si un ítem excluido pertenece a otro pack, ese pack no entra.
-function excludedPacks(pack: typeof packs[number]) {
-  const names = packs
-    .filter(other => other.slug !== pack.slug && other.groups.some(g => g.items.some(i => pack.notIncluded.includes(i.item))))
-    .map(other => other.name);
-  return names.length ? names.join(', ') : '—';
-}
-
-export default function Home({searchParams}: {searchParams?: Promise<{lang?: string}>}) {
-  return searchParams ? <HomeWithLang searchParams={searchParams}/> : <HomeWithLang/>;
-}
-async function HomeWithLang({searchParams}: {searchParams?: Promise<{lang?: string}>}) {
-  const lang = (await searchParams)?.lang === 'en' ? 'en' : 'es';
-  const c = copyFor(lang as Lang);
-  const steps = c.steps.map((step, i) => ({n: i + 1, ...step}));
-  return <><JsonLd data={{'@context': 'https://schema.org', '@type': 'Organization', name: 'Hiper Pozuelo', url: SITE_URL, areaServed: 'Pozuelo de Alarcón'}}/><main className="site-home">
-    <section data-block="2" className="home-block hook wrap">
-      <div className="hook-copy">
-        <p className="eyebrow">{c.packs}</p>
-        <h1>{c.homeTitle}</h1>
-        <p className="home-lead">{c.homeLead}</p>
-        <div className="cta-row">
-          <Link className="btn" href="/packs">{c.viewPacks}</Link>
-          <a className="btn secondary" href="#como-funciona">{c.how}</a>
-        </div>
-      </div>
-      <ul className="hook-index" aria-label="Los cuatro packs y su precio">
-        {packs.map(p => (
-          <li key={p.slug}>
-            <Link href={`/packs/${p.slug}`}>
-              <span>{p.name}</span>
-              <span className="hi-price">{eur(p.priceCents)}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-
-    <section data-block="3" className="trust-row wrap" aria-label={c.packs}>
-      <p>{c.pickup}</p><p>{c.simulated}</p><p>{c.demoPrice}</p>
-    </section>
-
-    <section data-block="4" className="home-block wrap" aria-labelledby="packs-heading">
-      <h2 id="packs-heading">{c.packs}</h2>
-      <div className="pack-grid">
-        {packs.map(p => (
-          <article className="pack-card" key={p.slug}>
-            <PackVisual slug={p.slug} units={p.units}/>
-            <div className="pack-card-body">
-              <h3>{p.name}</h3>
-              <p className="price">{eur(p.priceCents)}</p>
-              <span className="availability" data-availability={p.availability}>{lang === 'en' ? c.availability[p.availability as keyof typeof c.availability] : availabilityLabel(p.availability)}</span>
-              <p className="micro">{PRICE_LABEL[p.dataStatus]}</p>
-              <Link className="btn secondary pack-cta" href={`/packs/${p.slug}`}>{c.viewPack}</Link>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-
-    <section data-block="5" className="home-block wrap" aria-labelledby="contents-heading">
-      <h2 id="contents-heading">{c.contents}</h2>
-      <div className="contents-list">
-        {packs.map(pack => (
-          <details className="contents-panel" key={pack.slug}>
-            <summary>
-              <span>{pack.name}</span>
-              <span className="contents-count">{pack.units} artículos</span>
-            </summary>
-            <ul>{pack.groups.flatMap(group => group.items).map(item => <li key={`${pack.slug}-${item.item}`}><span>{item.item}</span><b>×{item.qty}</b></li>)}</ul>
-          </details>
-        ))}
-      </div>
-    </section>
-
-    <section data-block="6" className="home-block wrap" aria-labelledby="coverage-heading">
-      <h2 id="coverage-heading">{c.coverage}</h2>
-      <div className="compare-scroll">
-        <table className="compare">
-          <caption className="sr-only">Comparación de los cuatro packs por artículos, grupos, precio y packs que no incluye</caption>
-          <thead>
-            <tr>
-              <th scope="col">{c.pack}</th><th scope="col">{c.items}</th><th scope="col">{c.groups}</th>
-              <th scope="col">Precio</th>
-              <th scope="col">{c.notIncluded}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {packs.map(pack => (
-              <tr key={pack.slug}>
-                <th scope="row">{pack.name}</th>
-                <td>{pack.units}</td>
-                <td>{pack.groups.length}</td>
-                <td className="price">{eur(pack.priceCents)}</td>
-                <td className="compare-excluded">{excludedPacks(pack)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section data-block="7" id="como-funciona" className="home-block wrap" aria-labelledby="how-heading">
-      <h2 id="how-heading">Cómo funciona</h2>
-      <ol className="steps">
-        {steps.map(step => (
-          <li key={step.n}>
-            <strong>{step.n}</strong>
-            <h3>{step.title}</h3>
-            <p>{step.line}</p>
-          </li>
-        ))}
-      </ol>
-    </section>
-
-    <section data-block="8" className="home-block wrap" aria-labelledby="pickup-heading">
-      <h2 id="pickup-heading">{c.where}</h2>
-      <div className="data-panel pickup-panel">
-        <p><strong>{c.noShipping}</strong></p><p>{c.chooseTime}</p><p>{c.code}</p>
-      </div>
-    </section>
-
-    <section data-block="9" className="home-block wrap" aria-labelledby="questions-heading">
-      <h2 id="questions-heading">{c.questions}</h2>
-      <div className="faq-list">
-        {QUESTIONS.map(item => (
-          <details key={item.q}>
-            <summary>{item.q}</summary>
-            <p>{item.a}</p>
-          </details>
-        ))}
-      </div>
-    </section>
-
-    <section data-block="10" className="home-block closure wrap">
-      <p>{c.close}</p><Link className="btn" href="/packs">{c.viewPacks}</Link>
-    </section>
+const QUESTIONS = [['¿Enviáis a casa o solo se recoge?', 'No. Solo se recoge en tienda, en la franja que elijas. No hay envío.'], ['¿Puedo devolverlo?', 'Sí, tienes 14 días desde la recogida. Las condiciones están en Condiciones de compra.'], ['¿El pago es real?', 'No. Es un pago simulado de demostración y no se realiza ningún cargo.'], ['¿Qué entra en cada pack?', 'Puedes ver todos los artículos y sus cantidades en la ficha de cada pack antes de pagar.']] as const;
+function Icon({kind}: {kind: 'choose' | 'clock' | 'code'}) { return <svg className="step-icon" viewBox="0 0 48 48" aria-hidden="true"><path d={kind === 'choose' ? 'M8 12h32v24H8zM14 18h20M14 25h12' : kind === 'clock' ? 'M24 8a16 16 0 1 0 0 32 16 16 0 0 0 0-32Zm0 8v9l6 4' : 'M12 17h24v20H12zM16 17v-3a8 8 0 0 1 16 0v3M19 27h10'} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>; }
+export default function Home({searchParams}: {searchParams?: Promise<{lang?: string}>}) { return <HomeContent searchParams={searchParams}/>; }
+async function HomeContent({searchParams}: {searchParams?: Promise<{lang?: string}>}) {
+  const lang = (await searchParams)?.lang === 'en' ? 'en' : 'es'; const c = copyFor(lang as Lang); const featured = packs.find(p => p.slug === 'completo') ?? packs[0]; const items = featured.groups.flatMap(group => group.items); let running = 0;
+  return <><JsonLd data={{'@context': 'https://schema.org', '@type': 'Organization', name: 'Hiper Pozuelo', url: SITE_URL, areaServed: 'Pozuelo de Alarcón'}}/><main className="home-narrative">
+    <section className="home-hero wrap" aria-labelledby="home-title"><div className="hero-copy"><p className="eyebrow">{c.packs}</p><h1 id="home-title">{c.homeTitle}</h1><p className="hero-subtitle">{c.homeLead}</p><Link className="btn" href="/packs">{c.viewPacks}</Link></div><div className="hero-visual"><PackVisual slug={featured.slug} units={featured.units} size="hero"/></div></section>
+    <section className="fill-story" aria-labelledby="fill-title"><div className="fill-sticky wrap"><div className="fill-intro"><p className="eyebrow">{featured.name}</p><h2 id="fill-title">El pack se llena.</h2><p>Todo lo que necesitas, reunido en una sola compra.</p></div><div className="fill-box"><div className="fill-box-top"><span>{featured.units} artículos</span><strong>{eur(featured.priceCents)}</strong></div><div className="fill-items">{items.map(item => { running += item.qty; return <div className="fill-item" key={item.item} style={{'--item-index': running} as React.CSSProperties}><span>{item.item}</span><b>×{item.qty}</b></div>;})}</div></div></div></section>
+    <section className="home-section wrap" aria-labelledby="packs-heading"><div className="section-heading"><p className="eyebrow">Compara y elige</p><h2 id="packs-heading">Los 4 packs</h2></div><div className="home-pack-grid">{packs.map(p => <article className="home-pack-card" key={p.slug}><PackVisual slug={p.slug} units={p.units}/><div className="home-pack-body"><div className="home-pack-heading"><h3>{p.name}</h3><strong className="price">{eur(p.priceCents)}</strong></div><span className="availability" data-availability={p.availability}>{lang === 'en' ? c.availability[p.availability as keyof typeof c.availability] : availabilityLabel(p.availability)}</span><p className="pack-summary">{p.units} artículos · {p.groups.length} grupos</p><ul className="pack-includes">{p.groups[0]?.items.slice(0, 3).map(item => <li key={item.item}>{item.item} ×{item.qty}</li>)}</ul><span className="label">{PRICE_LABEL[p.dataStatus]}</span><Link className="btn secondary" href={`/packs/${p.slug}`}>{c.viewPack}</Link></div></article>)}</div></section>
+    <section id="como-funciona" className="home-section wrap" aria-labelledby="how-title"><div className="section-heading"><p className="eyebrow">Sin complicaciones</p><h2 id="how-title">Cómo funciona</h2><p>Recogida gratis en tienda, sin envíos.</p></div><ol className="how-grid"><li><Icon kind="choose"/><span className="step-number">01</span><h3>Elige y paga</h3><p>Escoge el pack que encaja contigo y simula el pago.</p></li><li><Icon kind="clock"/><span className="step-number">02</span><h3>Escoge franja</h3><p>Elige el día y la hora en la que pasarás por tienda.</p></li><li><Icon kind="code"/><span className="step-number">03</span><h3>Recoge con tu código</h3><p>Te damos un código de 6 caracteres para recogerlo.</p></li></ol></section>
+    <section className="pickup-block wrap" aria-labelledby="pickup-title"><div><p className="eyebrow">Recogida</p><h2 id="pickup-title">Dónde lo recoges</h2><p>Recogida en tienda. Sin envíos.</p></div><div className="pending-address">Dirección pendiente de confirmar al preparar el pedido.</div></section>
+    <section className="home-section wrap" aria-labelledby="faq-title"><div className="section-heading"><p className="eyebrow">Antes de comprar</p><h2 id="faq-title">Preguntas frecuentes</h2></div><div className="home-faq">{QUESTIONS.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div></section>
+    <section className="home-close wrap"><h2>Todo listo para tu primer día.</h2><p>Elige tu pack y mira todo lo que entra antes de pagar.</p><Link className="btn" href="/packs">{c.viewPacks}</Link></section>
   </main></>;
 }
