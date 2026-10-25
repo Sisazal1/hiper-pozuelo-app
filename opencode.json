@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "deepseek/deepseek-flash",
+  "instructions": [
+    "OPENCODE.md",
+    "docs/design/art-direction.md",
+    "docs/design/cro-copy.md",
+    "docs/design/cro-copy-2.md",
+    "docs/design/acceptance.md",
+    "docs/design/implementation.md"
+  ]
+}
